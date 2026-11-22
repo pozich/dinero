@@ -1,4 +1,4 @@
-import type { ParsedStatement } from "./types";
+import type { ParsedTransaction, TransactionSummary } from "./types";
 
 export type GoldenResult = {
   ok: boolean;
@@ -7,7 +7,14 @@ export type GoldenResult = {
   transactionsDelta: number;
 };
 
-export function checkGolden(statement: ParsedStatement): GoldenResult {
+export type GoldenInput = {
+  summary: TransactionSummary;
+  transactions: ParsedTransaction[];
+};
+
+/** opening + Σ(categories) == closing, and that must equal the sum of every
+ * parsed transaction (plus any fees the caller folds in) — see SPEC.md 4.2. */
+export function checkGolden(statement: GoldenInput): GoldenResult {
   const { summary, transactions } = statement;
   const summaryDelta = Object.values(summary.categories).reduce((a, b) => a + b, 0);
   const expectedDelta = summary.closing - summary.opening;
