@@ -1,4 +1,5 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { ensurePdfWorker } from "./pdfjsWorker";
 import { extractDocumentRows, type Row } from "./pdfRows";
 import type { ParsedTransaction, TransactionSummary } from "./types";
 
@@ -116,6 +117,7 @@ function parseTransactions(rows: Row[]): ParsedTransaction[] {
 }
 
 export async function parseEurasian(data: Uint8Array): Promise<ParsedEurasianStatement> {
+  await ensurePdfWorker();
   const doc = await getDocument({ data, useWorkerFetch: false }).promise;
   const rows = await extractDocumentRows(doc);
 

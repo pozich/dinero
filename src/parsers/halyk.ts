@@ -1,4 +1,5 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { ensurePdfWorker } from "./pdfjsWorker";
 import { extractDocumentRows, rowText, type Row } from "./pdfRows";
 import type { ParsedTransaction, TransactionSummary } from "./types";
 
@@ -88,6 +89,7 @@ function parseBalance(headerText: string, label: string): number {
 }
 
 export async function parseHalyk(data: Uint8Array): Promise<ParsedHalykStatement> {
+  await ensurePdfWorker();
   const doc = await getDocument({ data, useWorkerFetch: false }).promise;
   const rows = await extractDocumentRows(doc);
 

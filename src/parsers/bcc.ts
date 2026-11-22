@@ -1,4 +1,5 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { ensurePdfWorker } from "./pdfjsWorker";
 import { extractDocumentRows, type Row } from "./pdfRows";
 import type { ParsedTransaction, TransactionSummary } from "./types";
 
@@ -45,6 +46,7 @@ function findSummaryRow(rows: Row[]): Row {
 }
 
 export async function parseBcc(data: Uint8Array): Promise<ParsedBccStatement> {
+  await ensurePdfWorker();
   const doc = await getDocument({ data, useWorkerFetch: false }).promise;
   const rows = await extractDocumentRows(doc);
 

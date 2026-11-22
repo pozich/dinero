@@ -1,4 +1,5 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { ensurePdfWorker } from "./pdfjsWorker";
 import { extractDocumentRows, rowText, type Row } from "./pdfRows";
 import type { ParsedStatement, ParsedTransaction, TransactionSummary } from "./types";
 
@@ -116,6 +117,7 @@ function parseTransactions(rows: Row[]): ParsedTransaction[] {
 }
 
 export async function parseKaspi(data: Uint8Array): Promise<ParsedStatement> {
+  await ensurePdfWorker();
   const doc = await getDocument({ data, useWorkerFetch: false }).promise;
   const rows = await extractDocumentRows(doc);
 
