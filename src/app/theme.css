@@ -1,0 +1,94 @@
+:root {
+  --bg: #000000;
+  --surface: #121212;
+  --surface-hover: #1c1c1c;
+  --text: #e8e8e8;
+  --text-dim: #8a8a8a;
+  --accent: #7dd3c0;
+  --border: #242424;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-bar button {
+  flex: 1;
+  padding: 14px 0;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.tab-bar button:hover {
+  background: var(--surface-hover);
+}
+
+.tab-bar button.active {
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.screen {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+.screen h2 {
+  margin-top: 0;
+  font-weight: 500;
+}
+
+.hint {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 12px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: 13px;
+}
