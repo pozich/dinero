@@ -44,6 +44,22 @@ body {
   border-bottom: none;
 }
 
+.review-button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.review-button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .undo-controls {
   display: flex;
   align-items: center;
@@ -369,6 +385,48 @@ button {
   gap: 8px;
 }
 
+.similar-list button {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  width: 100%;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.similar-list button:hover {
+  background: var(--surface-hover);
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 200px;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.context-menu button:hover {
+  background: var(--surface-hover);
+}
+
 .receipt-grid {
   display: flex;
   flex-wrap: wrap;
@@ -502,4 +560,67 @@ code {
 
 .rule-cheatsheet table {
   margin-top: 6px;
+}
+
+.review-screen {
+  min-width: 560px;
+}
+
+.review-list {
+  list-style: none;
+  padding: 0;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.review-list li {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.review-list li.active {
+  border-color: var(--accent);
+}
+
+.review-reason {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.review-pair {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.review-arrow {
+  color: var(--text-dim);
+}
+
+.review-card {
+  flex: 1;
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.review-card-account {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.review-card-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }

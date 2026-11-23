@@ -10,6 +10,9 @@ import { installGlobalErrorLogging } from "./reliability/errorLog";
 import { backupBefore } from "./reliability/backups";
 import { installTestHooks } from "./testHooks";
 import { UndoProvider, useUndoState } from "./undo/UndoContext";
+import { ReviewScreen } from "./features/review/ReviewScreen";
+import { buildReviewCandidates } from "./review/buildReviewCandidates";
+import { getDb } from "./db/client";
 import "./app/theme.css";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -73,6 +76,27 @@ function UndoControls() {
   );
 }
 
+function ReviewButton() {
+  const [count, setCount] = useState(0);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    getDb()
+      .then(buildReviewCandidates)
+      .then((c) => setCount(c.length))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <>
+      <button type="button" className="review-button" onClick={() => setOpen(true)}>
+        Проверить ({count})
+      </button>
+      {open && <ReviewScreen onClose={() => setOpen(false)} onCountChange={setCount} />}
+    </>
+  );
+}
+
 function AppShell() {
   const [tab, setTab] = useState<TabId>("files");
 
@@ -107,6 +131,7 @@ function AppShell() {
       <ReadOnlyBanner />
       <div className="app-header">
         <TabBar active={tab} onChange={setTab} />
+        <ReviewButton />
         <UndoControls />
       </div>
       {tab === "files" && <FilesScreen />}

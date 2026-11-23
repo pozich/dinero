@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { getDb } from "../../db/client";
 import { listAccounts, type Account } from "../../db/accounts";
 import { listCategories, findOrCreateCategory, type Category } from "../../db/categories";
@@ -27,10 +27,16 @@ import { SplitDialog } from "./SplitDialog";
 import { ApplyToSimilarDialog } from "./ApplyToSimilarDialog";
 import { RulesDialog } from "./RulesDialog";
 import { ApplyRulesDialog, type RuleMatch } from "./ApplyRulesDialog";
+import { ManualLinkDialog } from "./ManualLinkDialog";
 import { useUndoStack } from "../../undo/UndoContext";
 import { withUndo } from "../../undo/undoStack";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
 import { backupBefore } from "../../reliability/backups";
+import {
+  confirmTransferLink,
+  unlinkTransferLink,
+  listConfirmedLinksForTransaction,
+} from "../../db/transferLinks";
 
 const COLUMNS: { key: SortColumn; label: string }[] = [
   { key: "occurred_at", label: "Дата" },
@@ -62,6 +68,13 @@ export function OperationsScreen() {
   const [rules, setRules] = useState<CategoryRule[]>([]);
   const [showRules, setShowRules] = useState(false);
   const [ruleMatches, setRuleMatches] = useState<RuleMatch[] | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    row: TransactionListItem;
+    x: number;
+    y: number;
+    linkId: number | null;
+  } | null>(null);
+  const [manualLinkFor, setManualLinkFor] = useState<TransactionListItem | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const undoStack = useUndoStack();
   const readOnly = useReadOnly();
@@ -296,6 +309,47 @@ export function OperationsScreen() {
     refresh();
   }
 
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
+
+  async function openContextMenu(e: MouseEvent, row: TransactionListItem) {
+    e.preventDefault();
+    if (readOnly) return;
+    const db = await getDb();
+    const links = await listConfirmedLinksForTransaction(db, row.id);
+    setContextMenu({ row, x: e.clientX, y: e.clientY, linkId: links[0]?.id ?? null });
+  }
+
+  async function unlink(linkId: number) {
+    const db = await getDb();
+    await withUndo(
+      undoStack,
+      "Разрыв связи",
+      [{ table: "transfer_links", whereSql: "id = $1", params: [linkId] }],
+      () => unlinkTransferLink(db, linkId),
+    );
+    setContextMenu(null);
+    refresh();
+  }
+
+  async function manualConfirm(other: TransactionListItem) {
+    if (!manualLinkFor) return;
+    const db = await getDb();
+    const [from, to] = manualLinkFor.amount_tiyin < 0 ? [manualLinkFor, other] : [other, manualLinkFor];
+    const id = await confirmTransferLink(db, from.id, to.id, "transfer");
+    undoStack?.pushCreated(`Перевод: ${from.description} → ${to.description}`, "transfer_links", id);
+    setManualLinkFor(null);
+    refresh();
+  }
+
   const showYear = spansMultipleYears(rows.map((r) => r.occurred_at));
 
   return (
@@ -364,7 +418,11 @@ export function OperationsScreen() {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={row.id} className={i === activeIndex ? "active-row" : ""}>
+            <tr
+              key={row.id}
+              className={i === activeIndex ? "active-row" : ""}
+              onContextMenu={(e) => openContextMenu(e, row)}
+            >
               <td>{formatTransactionDate(row.occurred_at, showYear)}</td>
               <td>{formatTiyin(row.amount_tiyin)}</td>
               <td>{row.description}</td>
@@ -434,6 +492,37 @@ export function OperationsScreen() {
 
       {ruleMatches && (
         <ApplyRulesDialog matches={ruleMatches} onApply={applyRules} onClose={() => setRuleMatches(null)} />
+      )}
+
+      {contextMenu && (
+        <div
+          className="context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setManualLinkFor(contextMenu.row);
+              setContextMenu(null);
+            }}
+          >
+            Связать как перевод с…
+          </button>
+          {contextMenu.linkId !== null && (
+            <button type="button" onClick={() => unlink(contextMenu.linkId!)}>
+              Разорвать связь
+            </button>
+          )}
+        </div>
+      )}
+
+      {manualLinkFor && (
+        <ManualLinkDialog
+          row={manualLinkFor}
+          onPick={manualConfirm}
+          onClose={() => setManualLinkFor(null)}
+        />
       )}
     </div>
   );
