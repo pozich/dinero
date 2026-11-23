@@ -126,6 +126,12 @@ pub fn run() {
             sql: include_str!("../migrations/0002_category_rules.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "transfer_status",
+            sql: include_str!("../migrations/0003_transfer_status.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let heartbeat_vault_path = vault_path.clone();

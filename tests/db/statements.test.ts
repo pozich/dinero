@@ -41,7 +41,7 @@ async function seed(db: ReturnType<typeof createTestDb>) {
     rawType: "Transfer to your account",
     dedupKey: "k2",
   });
-  await insertTransferLink(db, main, mirror, true);
+  await insertTransferLink(db, main, mirror, { status: "confirmed", kind: "transfer" });
 
   const categorized = await insertTransaction(db, {
     accountId: kaspiId,

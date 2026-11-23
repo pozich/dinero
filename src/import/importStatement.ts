@@ -80,7 +80,10 @@ async function linkCashMirrors(
 
   const { ids: mirrorIds, inserted, skipped } = await insertAll(db, "cash", statementId, mirrors);
   for (const link of links) {
-    await insertTransferLink(db, parentIds[link.parentIndex], mirrorIds[link.cashIndex], true);
+    await insertTransferLink(db, parentIds[link.parentIndex], mirrorIds[link.cashIndex], {
+      status: "confirmed",
+      kind: "transfer",
+    });
   }
   return { inserted, skipped };
 }
@@ -122,12 +125,10 @@ export async function importStatement(
     );
     const deposit = await insertAll(db, "kaspi_deposit", statementId, depositMirrors);
     for (const link of depositLinks) {
-      await insertTransferLink(
-        db,
-        main.ids[link.kaspiGoldIndex],
-        deposit.ids[link.kaspiDepositIndex],
-        true,
-      );
+      await insertTransferLink(db, main.ids[link.kaspiGoldIndex], deposit.ids[link.kaspiDepositIndex], {
+        status: "confirmed",
+        kind: "transfer",
+      });
     }
 
     const cash = await linkCashMirrors(db, statementId, main.ids, statement.transactions);

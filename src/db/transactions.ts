@@ -42,16 +42,20 @@ export async function insertTransaction(
   return result.lastInsertId!;
 }
 
+export type TransferLinkStatus = "pending" | "confirmed" | "rejected";
+export type TransferLinkKind = "transfer" | "refund";
+
 export async function insertTransferLink(
   db: DbClient,
   fromTransactionId: number,
   toTransactionId: number,
-  confirmed: boolean,
-): Promise<void> {
-  await db.execute(
-    "INSERT INTO transfer_links (from_transaction_id, to_transaction_id, confirmed) VALUES ($1, $2, $3)",
-    [fromTransactionId, toTransactionId, confirmed ? 1 : 0],
+  options: { status: TransferLinkStatus; kind: TransferLinkKind },
+): Promise<number> {
+  const result = await db.execute(
+    "INSERT INTO transfer_links (from_transaction_id, to_transaction_id, status, kind) VALUES ($1, $2, $3, $4)",
+    [fromTransactionId, toTransactionId, options.status, options.kind],
   );
+  return result.lastInsertId!;
 }
 
 /** Одна категория на всю сумму операции — заменяет любой предыдущий разрез. */
