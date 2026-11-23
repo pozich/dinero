@@ -223,7 +223,13 @@ export function OperationsScreen() {
               <td>{formatTransactionDate(row.occurred_at, showYear)}</td>
               <td>{formatTiyin(row.amount_tiyin)}</td>
               <td>{row.description}</td>
-              <td>
+              <td
+                className="category-cell"
+                onClick={() => {
+                  setActiveIndex(i);
+                  setEditingCategory(true);
+                }}
+              >
                 {i === activeIndex && editingCategory ? (
                   <CategoryInput
                     initialValue={row.category_name ?? ""}
@@ -243,7 +249,10 @@ export function OperationsScreen() {
       </table>
 
       <p className="hint">
-        {rows.length} операций. ↑/↓ — выбрать строку, Enter — категория, Ctrl+S — разрез.
+        {rows.length} операций.{" "}
+        <span className="keyboard-hint">
+          ↑/↓ — выбрать строку, Enter — категория, Ctrl+S — разрез.
+        </span>
       </p>
 
       {splitFor && (

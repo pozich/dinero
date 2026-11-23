@@ -1,0 +1,36 @@
+name: Windows build
+
+# Собирает установщик для Windows на самой Windows (через GitHub Actions),
+# потому что надёжный cross-compile с Linux на Windows для Tauri не
+# завезён — см. README "Сборка под Windows".
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Dinero ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false

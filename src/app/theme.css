@@ -69,6 +69,52 @@ body {
   font-weight: 500;
 }
 
+.category-cell {
+  cursor: pointer;
+}
+
+/* Телефон / узкий экран: нижняя навигация под большой палец, крупнее
+   тач-зоны, без подсказок про горячие клавиши (SPEC.md раздел 8). */
+@media (max-width: 768px) {
+  .tab-bar {
+    order: 2;
+    border-bottom: none;
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .tab-bar button {
+    padding: 16px 0;
+    font-size: 13px;
+  }
+
+  .screen {
+    order: 1;
+    padding: 16px;
+  }
+
+  .keyboard-hint {
+    display: none;
+  }
+
+  button,
+  input,
+  select {
+    min-height: 40px;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
 .hint {
   color: var(--text-dim);
   font-size: 13px;
