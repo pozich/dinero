@@ -22,12 +22,14 @@ export async function insertTransaction(
     rawType: string | null;
     dedupKey: string;
     relatedTransactionId?: number | null;
+    isManual?: boolean;
+    note?: string | null;
   },
 ): Promise<number> {
   const result = await db.execute(
     `INSERT INTO transactions
-       (account_id, statement_id, occurred_at, amount_tiyin, description, raw_type, dedup_key, related_transaction_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       (account_id, statement_id, occurred_at, amount_tiyin, description, raw_type, dedup_key, related_transaction_id, is_manual, note)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       input.accountId,
       input.statementId,
@@ -37,9 +39,30 @@ export async function insertTransaction(
       input.rawType,
       input.dedupKey,
       input.relatedTransactionId ?? null,
+      input.isManual ? 1 : 0,
+      input.note ?? null,
     ],
   );
   return result.lastInsertId!;
+}
+
+export async function setTransactionNote(
+  db: DbClient,
+  transactionId: number,
+  note: string | null,
+): Promise<void> {
+  await db.execute("UPDATE transactions SET note = $1 WHERE id = $2", [note, transactionId]);
+}
+
+export async function setTransactionIgnored(
+  db: DbClient,
+  transactionId: number,
+  ignored: boolean,
+): Promise<void> {
+  await db.execute("UPDATE transactions SET is_ignored = $1 WHERE id = $2", [
+    ignored ? 1 : 0,
+    transactionId,
+  ]);
 }
 
 export type TransferLinkStatus = "pending" | "confirmed" | "rejected";

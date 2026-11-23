@@ -10,6 +10,9 @@ export type TransactionListItem = {
   category_id: number | null;
   category_name: string | null;
   split_count: number;
+  is_manual: number;
+  is_ignored: number;
+  note: string | null;
 };
 
 export type TransactionFilters = {
@@ -41,8 +44,15 @@ export function buildTransactionsQuery(
   const params: unknown[] = [];
 
   if (filters.search) {
+    // Pushed twice rather than reusing one $N index twice — the test
+    // harness's placeholder translator (tests/testDb.ts) treats each `$N`
+    // occurrence as consuming its own positional value, unlike sqlx's real
+    // SQLite backend which would happily rebind the same index.
     params.push(`%${filters.search}%`);
-    where.push(`t.description LIKE $${params.length}`);
+    const descriptionIndex = params.length;
+    params.push(`%${filters.search}%`);
+    const noteIndex = params.length;
+    where.push(`(t.description LIKE $${descriptionIndex} OR t.note LIKE $${noteIndex})`);
   }
   if (filters.exactDescription !== undefined) {
     params.push(filters.exactDescription);
@@ -76,6 +86,7 @@ export function buildTransactionsQuery(
   const sql = `
     SELECT
       t.id, t.account_id, a.name AS account_name, t.occurred_at, t.amount_tiyin, t.description,
+      t.is_manual, t.is_ignored, t.note,
       MIN(s.category_id) AS category_id,
       MIN(c.name) AS category_name,
       COUNT(s.id) AS split_count
