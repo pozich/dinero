@@ -3,6 +3,13 @@ import { TabBar, TAB_ORDER, type TabId } from "./app/TabBar";
 import { FilesScreen } from "./features/files/FilesScreen";
 import { OperationsScreen } from "./features/operations/OperationsScreen";
 import { DataScreen } from "./features/data/DataScreen";
+import { ReadOnlyProvider } from "./reliability/ReadOnlyContext";
+import { LockConflictDialog } from "./reliability/LockConflictDialog";
+import { SyncConflictBanner, ReadOnlyBanner } from "./reliability/Banners";
+import { installGlobalErrorLogging } from "./reliability/errorLog";
+import { backupBefore } from "./reliability/backups";
+import { installTestHooks } from "./testHooks";
+import { UndoProvider, useUndoState } from "./undo/UndoContext";
 import "./app/theme.css";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -14,7 +21,59 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-function App() {
+function UndoControls() {
+  const { stack, canUndo, canRedo } = useUndoState();
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    async function onKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(e.target)) return;
+      const isUndoChord = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z";
+      if (!isUndoChord || !stack) return;
+      e.preventDefault();
+      const label = e.shiftKey ? await stack.redo() : await stack.undo();
+      if (label) setToast(`${e.shiftKey ? "Повтор" : "Отмена"}: ${label}`);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [stack]);
+
+  return (
+    <div className="undo-controls">
+      <button
+        type="button"
+        title="Отменить (Ctrl+Z)"
+        disabled={!canUndo}
+        onClick={async () => {
+          const label = await stack?.undo();
+          if (label) setToast(`Отмена: ${label}`);
+        }}
+      >
+        ↶
+      </button>
+      <button
+        type="button"
+        title="Повторить (Ctrl+Shift+Z)"
+        disabled={!canRedo}
+        onClick={async () => {
+          const label = await stack?.redo();
+          if (label) setToast(`Повтор: ${label}`);
+        }}
+      >
+        ↷
+      </button>
+      {toast && <span className="undo-toast">{toast}</span>}
+    </div>
+  );
+}
+
+function AppShell() {
   const [tab, setTab] = useState<TabId>("files");
 
   useEffect(() => {
@@ -35,13 +94,35 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [tab]);
 
+  useEffect(() => {
+    installGlobalErrorLogging();
+    installTestHooks();
+    backupBefore("startup");
+  }, []);
+
   return (
     <div className="app">
-      <TabBar active={tab} onChange={setTab} />
+      <LockConflictDialog />
+      <SyncConflictBanner />
+      <ReadOnlyBanner />
+      <div className="app-header">
+        <TabBar active={tab} onChange={setTab} />
+        <UndoControls />
+      </div>
       {tab === "files" && <FilesScreen />}
       {tab === "operations" && <OperationsScreen />}
       {tab === "data" && <DataScreen />}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ReadOnlyProvider>
+      <UndoProvider>
+        <AppShell />
+      </UndoProvider>
+    </ReadOnlyProvider>
   );
 }
 

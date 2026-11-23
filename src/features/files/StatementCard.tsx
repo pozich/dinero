@@ -10,8 +10,8 @@ export function StatementCard({
   onReplace,
 }: {
   statement: StatementSummary;
-  onDelete: () => void;
-  onReplace: () => void;
+  onDelete?: () => void;
+  onReplace?: () => void;
 }) {
   return (
     <div className="receipt-flip">
@@ -25,10 +25,10 @@ export function StatementCard({
           <div className="receipt-file">{statement.file_name}</div>
         </div>
         <div className="receipt-face receipt-back">
-          <button type="button" onClick={onReplace}>
+          <button type="button" onClick={onReplace} disabled={!onReplace}>
             Заменить
           </button>
-          <button type="button" onClick={onDelete}>
+          <button type="button" onClick={onDelete} disabled={!onDelete}>
             Удалить
           </button>
         </div>

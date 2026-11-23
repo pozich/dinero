@@ -27,6 +27,10 @@ import { SplitDialog } from "./SplitDialog";
 import { ApplyToSimilarDialog } from "./ApplyToSimilarDialog";
 import { RulesDialog } from "./RulesDialog";
 import { ApplyRulesDialog, type RuleMatch } from "./ApplyRulesDialog";
+import { useUndoStack } from "../../undo/UndoContext";
+import { withUndo } from "../../undo/undoStack";
+import { useReadOnly } from "../../reliability/ReadOnlyContext";
+import { backupBefore } from "../../reliability/backups";
 
 const COLUMNS: { key: SortColumn; label: string }[] = [
   { key: "occurred_at", label: "Дата" },
@@ -59,6 +63,8 @@ export function OperationsScreen() {
   const [showRules, setShowRules] = useState(false);
   const [ruleMatches, setRuleMatches] = useState<RuleMatch[] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const undoStack = useUndoStack();
+  const readOnly = useReadOnly();
 
   const refreshRules = useCallback(async () => {
     const db = await getDb();
@@ -104,7 +110,7 @@ export function OperationsScreen() {
       const isSaveChord = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s";
       if (isSaveChord) {
         e.preventDefault();
-        if (activeIndex !== null && rows[activeIndex]) {
+        if (!readOnly && activeIndex !== null && rows[activeIndex]) {
           setEditingCategory(false);
           setSplitFor(rows[activeIndex]);
         }
@@ -118,7 +124,7 @@ export function OperationsScreen() {
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setActiveIndex((i) => (i === null ? 0 : Math.max(i - 1, 0)));
-      } else if (e.key === "Enter") {
+      } else if (e.key === "Enter" && !readOnly) {
         if (activeIndex === null && rows.length > 0) {
           e.preventDefault();
           setActiveIndex(0);
@@ -132,16 +138,21 @@ export function OperationsScreen() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex, editingCategory, rows, splitFor, similarPrompt]);
+  }, [activeIndex, editingCategory, rows, splitFor, similarPrompt, readOnly]);
 
   async function commitCategory(name: string) {
     const row = activeIndex !== null ? rows[activeIndex] : undefined;
     setEditingCategory(false);
-    if (!row) return;
+    if (!row || readOnly) return;
 
     const db = await getDb();
     const categoryId = await findOrCreateCategory(db, name);
-    await setTransactionCategory(db, row.id, categoryId, row.amount_tiyin);
+    await withUndo(
+      undoStack,
+      `Категория: ${row.description}`,
+      [{ table: "splits", whereSql: "transaction_id = $1", params: [row.id] }],
+      () => setTransactionCategory(db, row.id, categoryId, row.amount_tiyin),
+    );
     setCategories(await listCategories(db));
 
     const candidates = (
@@ -159,51 +170,85 @@ export function OperationsScreen() {
   }
 
   async function applySimilar(ids: number[]) {
-    if (!similarPrompt) return;
+    if (!similarPrompt || readOnly) return;
+    await backupBefore("bulk_action");
     const db = await getDb();
-    for (const id of ids) {
-      const row = similarPrompt.candidates.find((c) => c.id === id);
-      if (row) await setTransactionCategory(db, id, similarPrompt.categoryId, row.amount_tiyin);
-    }
+    const specs = ids.map((id) => ({
+      table: "splits",
+      whereSql: "transaction_id = $1",
+      params: [id],
+    }));
+    await withUndo(
+      undoStack,
+      `Применить категорию «${similarPrompt.categoryName}» к похожим (${ids.length})`,
+      specs,
+      async () => {
+        for (const id of ids) {
+          const row = similarPrompt.candidates.find((c) => c.id === id);
+          if (row) await setTransactionCategory(db, id, similarPrompt.categoryId, row.amount_tiyin);
+        }
+      },
+    );
     setSimilarPrompt(null);
     refresh();
   }
 
   async function saveSplits(splits: { categoryId: number; amountTiyin: number }[]) {
-    if (!splitFor) return;
+    if (!splitFor || readOnly) return;
     const db = await getDb();
-    await setTransactionSplits(db, splitFor.id, splitFor.amount_tiyin, splits);
+    await withUndo(
+      undoStack,
+      `Разрез: ${splitFor.description}`,
+      [{ table: "splits", whereSql: "transaction_id = $1", params: [splitFor.id] }],
+      () => setTransactionSplits(db, splitFor.id, splitFor.amount_tiyin, splits),
+    );
     setSplitFor(null);
     refresh();
   }
 
+  // All category_rules mutations snapshot the whole (small) table rather
+  // than computing which row(s) are affected (moveRule swaps a neighbour
+  // whose id we'd otherwise have to look up twice) — one undo step always
+  // restores the table to exactly what it was.
+  const RULES_TABLE_SPEC = [{ table: "category_rules", whereSql: "1=1", params: [] }];
+
   async function createRule(input: { pattern: string; caseSensitive: boolean; categoryName: string }) {
+    if (readOnly) return;
     const db = await getDb();
     const categoryId = await findOrCreateCategory(db, input.categoryName);
-    await createCategoryRule(db, {
-      pattern: input.pattern,
-      caseSensitive: input.caseSensitive,
-      categoryId,
-    });
+    await withUndo(undoStack, `Новое правило: ${input.pattern}`, RULES_TABLE_SPEC, () =>
+      createCategoryRule(db, {
+        pattern: input.pattern,
+        caseSensitive: input.caseSensitive,
+        categoryId,
+      }).then(() => undefined),
+    );
     setCategories(await listCategories(db));
     refreshRules();
   }
 
   async function updateRule(id: number, patch: { isActive?: boolean }) {
+    if (readOnly) return;
     const db = await getDb();
-    await updateCategoryRule(db, id, patch);
+    await withUndo(undoStack, "Изменение правила", RULES_TABLE_SPEC, () =>
+      updateCategoryRule(db, id, patch),
+    );
     refreshRules();
   }
 
   async function deleteRule(id: number) {
+    if (readOnly) return;
     const db = await getDb();
-    await deleteCategoryRule(db, id);
+    await withUndo(undoStack, "Удаление правила", RULES_TABLE_SPEC, () => deleteCategoryRule(db, id));
     refreshRules();
   }
 
   async function moveRule(id: number, direction: "up" | "down") {
+    if (readOnly) return;
     const db = await getDb();
-    await moveCategoryRule(db, id, direction);
+    await withUndo(undoStack, "Порядок правил", RULES_TABLE_SPEC, () =>
+      moveCategoryRule(db, id, direction),
+    );
     refreshRules();
   }
 
@@ -226,14 +271,27 @@ export function OperationsScreen() {
   }
 
   async function applyRules(transactionIds: number[]) {
-    if (!ruleMatches) return;
+    if (!ruleMatches || readOnly) return;
+    await backupBefore("apply_rules");
     const db = await getDb();
-    for (const id of transactionIds) {
-      const match = ruleMatches.find((m) => m.transaction.id === id);
-      if (match) {
-        await setTransactionCategory(db, id, match.categoryId, match.transaction.amount_tiyin);
-      }
-    }
+    const specs = transactionIds.map((id) => ({
+      table: "splits",
+      whereSql: "transaction_id = $1",
+      params: [id],
+    }));
+    await withUndo(
+      undoStack,
+      `Применить правила (${transactionIds.length})`,
+      specs,
+      async () => {
+        for (const id of transactionIds) {
+          const match = ruleMatches.find((m) => m.transaction.id === id);
+          if (match) {
+            await setTransactionCategory(db, id, match.categoryId, match.transaction.amount_tiyin);
+          }
+        }
+      },
+    );
     setRuleMatches(null);
     refresh();
   }
@@ -275,7 +333,7 @@ export function OperationsScreen() {
         <button type="button" onClick={() => setShowRules(true)}>
           Правила ({rules.length})
         </button>
-        <button type="button" onClick={openApplyRules}>
+        <button type="button" onClick={openApplyRules} disabled={readOnly}>
           Применить правила
         </button>
       </div>
@@ -313,6 +371,7 @@ export function OperationsScreen() {
               <td
                 className="category-cell"
                 onClick={() => {
+                  if (readOnly) return;
                   setActiveIndex(i);
                   setEditingCategory(true);
                 }}

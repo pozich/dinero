@@ -11,6 +11,8 @@ import {
 import { importStatement, type ImportResult } from "../../import/importStatement";
 import { StatementCard } from "./StatementCard";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { useReadOnly } from "../../reliability/ReadOnlyContext";
+import { backupBefore } from "../../reliability/backups";
 
 function resultMessage(result: ImportResult, fileName: string): string {
   switch (result.status) {
@@ -30,6 +32,7 @@ export function FilesScreen() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const readOnly = useReadOnly();
 
   const refresh = useCallback(async () => {
     const db = await getDb();
@@ -41,6 +44,7 @@ export function FilesScreen() {
   }, [refresh]);
 
   async function pickAndImport(): Promise<void> {
+    if (readOnly) return;
     const path = await open({
       multiple: false,
       filters: [{ name: "Выписки", extensions: ["pdf"] }],
@@ -50,6 +54,7 @@ export function FilesScreen() {
     setBusy(true);
     setMessage(null);
     try {
+      await backupBefore("import");
       const bytes = await invoke<number[]>("read_file_bytes", { path });
       const data = new Uint8Array(bytes);
       const fileName = path.split(/[/\\]/).pop() ?? path;
@@ -65,6 +70,7 @@ export function FilesScreen() {
   }
 
   async function askAction(statement: StatementSummary, kind: "delete" | "replace") {
+    if (readOnly) return;
     const db = await getDb();
     const categorizedCount = await countCategorizedTransactions(db, statement.id);
     setPending({ statement, kind, categorizedCount });
@@ -76,6 +82,7 @@ export function FilesScreen() {
     setPending(null);
     setBusy(true);
     try {
+      await backupBefore("delete_statement");
       const db = await getDb();
       await deleteStatement(db, statement.id);
       await refresh();
@@ -92,7 +99,7 @@ export function FilesScreen() {
   return (
     <div className="screen">
       <h2>Файлы</h2>
-      <button type="button" onClick={pickAndImport} disabled={busy}>
+      <button type="button" onClick={pickAndImport} disabled={busy || readOnly}>
         {busy ? "Работаю..." : "Импортировать выписку (PDF)"}
       </button>
       {message && <p className="hint">{message}</p>}
@@ -102,8 +109,8 @@ export function FilesScreen() {
           <StatementCard
             key={s.id}
             statement={s}
-            onDelete={() => askAction(s, "delete")}
-            onReplace={() => askAction(s, "replace")}
+            onDelete={readOnly ? undefined : () => askAction(s, "delete")}
+            onReplace={readOnly ? undefined : () => askAction(s, "replace")}
           />
         ))}
       </div>

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getDb } from "../../db/client";
+import { listBackups, restoreBackup, type BackupMeta } from "../../reliability/backups";
+import { openLogsFolder } from "../../reliability/errorLog";
 
 type Account = {
   id: number;
@@ -22,12 +24,32 @@ function vaultFolderFromDbUrl(dbUrl: string): string {
   return path.replace(/[/\\]dinero\.db$/, "");
 }
 
+const REASON_LABELS: Record<string, string> = {
+  startup: "запуск",
+  import: "перед импортом",
+  delete_statement: "перед удалением выписки",
+  bulk_action: "перед массовым применением",
+  apply_rules: "перед применением правил",
+  before_restore: "перед восстановлением",
+};
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
 export function DataScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [vaultMessage, setVaultMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [backups, setBackups] = useState<BackupMeta[]>([]);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+
+  const refreshBackups = useCallback(() => {
+    listBackups().then(setBackups).catch(() => {});
+  }, []);
 
   useEffect(() => {
     getDb()
@@ -39,7 +61,18 @@ export function DataScreen() {
       })
       .catch((e) => setError(String(e)));
     invoke<string>("get_db_url").then((url) => setVaultPath(vaultFolderFromDbUrl(url)));
-  }, []);
+    refreshBackups();
+  }, [refreshBackups]);
+
+  async function handleRestore(backup: BackupMeta) {
+    const ok = window.confirm(
+      `Восстановить базу из бэкапа от ${new Date(backup.created_at).toLocaleString("ru-RU")}? Текущая база будет сначала сама сохранена в бэкапы, но приложение надо перезапустить.`,
+    );
+    if (!ok) return;
+    await restoreBackup(backup.name);
+    setBackupMessage("Восстановлено. Перезапустите приложение, чтобы увидеть изменения.");
+    refreshBackups();
+  }
 
   async function changeVault() {
     const path = await open({ directory: true, title: "Папка для данных Dinero" });
@@ -73,6 +106,45 @@ export function DataScreen() {
         Изменить папку...
       </button>
       {vaultMessage && <p className="hint">{vaultMessage}</p>}
+
+      <h3>Бэкапы</h3>
+      <p className="hint">
+        Делаются сами при запуске (не чаще раза в день) и перед импортом,
+        удалением выписки, массовым применением категорий и применением
+        правил.{" "}
+        <button type="button" onClick={() => openLogsFolder().catch(() => {})}>
+          Открыть папку логов
+        </button>
+      </p>
+      {backupMessage && <p className="hint">{backupMessage}</p>}
+      {backups.length === 0 ? (
+        <p className="hint">Бэкапов пока нет.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Когда</th>
+              <th>Причина</th>
+              <th>Размер</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {backups.map((b) => (
+              <tr key={b.name}>
+                <td>{new Date(b.created_at).toLocaleString("ru-RU")}</td>
+                <td>{REASON_LABELS[b.reason] ?? b.reason}</td>
+                <td>{formatSize(b.size_bytes)}</td>
+                <td>
+                  <button type="button" onClick={() => handleRestore(b)}>
+                    Восстановить
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       <table>
         <thead>
