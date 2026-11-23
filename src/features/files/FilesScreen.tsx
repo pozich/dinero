@@ -2,8 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { getDb } from "../../db/client";
-import { listStatements, type StatementRow } from "../../db/statements";
+import {
+  listStatements,
+  countCategorizedTransactions,
+  deleteStatement,
+  type StatementSummary,
+} from "../../db/statements";
 import { importStatement, type ImportResult } from "../../import/importStatement";
+import { StatementCard } from "./StatementCard";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 function resultMessage(result: ImportResult, fileName: string): string {
   switch (result.status) {
@@ -16,10 +23,13 @@ function resultMessage(result: ImportResult, fileName: string): string {
   }
 }
 
+type PendingAction = { statement: StatementSummary; kind: "delete" | "replace"; categorizedCount: number };
+
 export function FilesScreen() {
-  const [statements, setStatements] = useState<StatementRow[]>([]);
+  const [statements, setStatements] = useState<StatementSummary[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingAction | null>(null);
 
   const refresh = useCallback(async () => {
     const db = await getDb();
@@ -30,7 +40,7 @@ export function FilesScreen() {
     refresh();
   }, [refresh]);
 
-  async function handleImport() {
+  async function pickAndImport(): Promise<void> {
     const path = await open({
       multiple: false,
       filters: [{ name: "Выписки", extensions: ["pdf"] }],
@@ -54,36 +64,63 @@ export function FilesScreen() {
     }
   }
 
+  async function askAction(statement: StatementSummary, kind: "delete" | "replace") {
+    const db = await getDb();
+    const categorizedCount = await countCategorizedTransactions(db, statement.id);
+    setPending({ statement, kind, categorizedCount });
+  }
+
+  async function confirmPending() {
+    if (!pending) return;
+    const { statement, kind } = pending;
+    setPending(null);
+    setBusy(true);
+    try {
+      const db = await getDb();
+      await deleteStatement(db, statement.id);
+      await refresh();
+      if (kind === "replace") {
+        await pickAndImport();
+      } else {
+        setMessage(`${statement.file_name}: удалено`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="screen">
       <h2>Файлы</h2>
-      <button type="button" onClick={handleImport} disabled={busy}>
-        {busy ? "Импортирую..." : "Импортировать выписку (PDF)"}
+      <button type="button" onClick={pickAndImport} disabled={busy}>
+        {busy ? "Работаю..." : "Импортировать выписку (PDF)"}
       </button>
       {message && <p className="hint">{message}</p>}
 
-      <table>
-        <thead>
-          <tr>
-            <th>Банк</th>
-            <th>Файл</th>
-            <th>Период</th>
-            <th>Загружен</th>
-          </tr>
-        </thead>
-        <tbody>
-          {statements.map((s) => (
-            <tr key={s.id}>
-              <td>{s.bank}</td>
-              <td>{s.file_name}</td>
-              <td>
-                {s.period_start.slice(0, 10)} — {s.period_end.slice(0, 10)}
-              </td>
-              <td>{s.imported_at.slice(0, 10)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="receipt-grid">
+        {statements.map((s) => (
+          <StatementCard
+            key={s.id}
+            statement={s}
+            onDelete={() => askAction(s, "delete")}
+            onReplace={() => askAction(s, "replace")}
+          />
+        ))}
+      </div>
+
+      {pending && (
+        <ConfirmDialog
+          title={pending.kind === "delete" ? "Удалить выписку?" : "Заменить выписку?"}
+          message={
+            pending.categorizedCount > 0
+              ? `${pending.categorizedCount} операций этой выписки уже разложены по категориям — они тоже будут удалены.`
+              : "У операций этой выписки ещё нет категорий."
+          }
+          confirmLabel={pending.kind === "delete" ? "Удалить" : "Удалить и выбрать новый файл"}
+          onConfirm={confirmPending}
+          onCancel={() => setPending(null)}
+        />
+      )}
     </div>
   );
 }
