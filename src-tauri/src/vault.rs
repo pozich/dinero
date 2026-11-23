@@ -56,3 +56,20 @@ pub fn resolve_vault_path() -> PathBuf {
 pub fn db_url_for(vault_path: &Path) -> String {
     format!("sqlite:{}", vault_path.join("dinero.db").to_string_lossy())
 }
+
+/// Syncthing names an unresolved conflict copy `<file>.sync-conflict-<date>-
+/// <time>-<device>.<ext>` right next to the original — a plain substring
+/// check in the vault root is enough to spot one (SPEC-2.md 2.1).
+pub fn detect_sync_conflicts(vault_path: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+    if let Ok(entries) = fs::read_dir(vault_path) {
+        for entry in entries.flatten() {
+            if let Some(name) = entry.file_name().to_str() {
+                if name.contains("sync-conflict") {
+                    found.push(name.to_string());
+                }
+            }
+        }
+    }
+    found
+}

@@ -26,6 +26,14 @@ serde_json = "1"
 # Just to find the OS config dir for the vault pointer file before the
 # Tauri app exists — tauri-plugin-dialog pulls it in transitively anyway.
 dirs = "7"
+# Device name for the lock-file conflict dialog (SPEC-2.md 2.1).
+gethostname = "0.5"
+# Calendar day/week math for backup rotation (SPEC-2.md 2.2) and log
+# timestamps — doing that by hand on top of SystemTime invites date bugs.
+chrono = { version = "0.4", features = ["clock"] }
+# Official "reveal in file manager" plugin, for the logs-folder button
+# (SPEC-2.md 2.4) — avoids hand-rolling xdg-open/explorer/open per OS.
+tauri-plugin-opener = "2"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
