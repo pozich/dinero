@@ -9,6 +9,9 @@ import {
   type StatementSummary,
 } from "../../db/statements";
 import { importStatement, type ImportResult } from "../../import/importStatement";
+import { peekPeriodStart } from "../../import/peekPeriod";
+import { buildReviewCandidates } from "../../review/buildReviewCandidates";
+import { formatGoldenMismatch } from "./goldenMismatch";
 import { StatementCard } from "./StatementCard";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
@@ -19,7 +22,7 @@ function resultMessage(result: ImportResult, fileName: string): string {
     case "duplicate_file":
       return `${fileName}: уже загружен, пропущено`;
     case "golden_mismatch":
-      return `${fileName}: итоги не сошлись (ожидали ${result.golden.expectedDelta}, получили ${result.golden.transactionsDelta}) — импорт отменён`;
+      return `${fileName}: итоги не сошлись (${formatGoldenMismatch(result.golden)}) — импорт отменён`;
     case "imported":
       return `${fileName}: добавлено ${result.inserted} операций (пропущено дублей: ${result.skippedDuplicateRows})`;
   }
@@ -30,7 +33,7 @@ type PendingAction = { statement: StatementSummary; kind: "delete" | "replace"; 
 export function FilesScreen() {
   const [statements, setStatements] = useState<StatementSummary[]>([]);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [report, setReport] = useState<string[] | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const readOnly = useReadOnly();
 
@@ -45,25 +48,58 @@ export function FilesScreen() {
 
   async function pickAndImport(): Promise<void> {
     if (readOnly) return;
-    const path = await open({
-      multiple: false,
+    const paths = await open({
+      multiple: true,
       filters: [{ name: "Выписки", extensions: ["pdf"] }],
     });
-    if (!path || Array.isArray(path)) return;
+    if (!paths) return;
+    const pathList = Array.isArray(paths) ? paths : [paths];
+    if (pathList.length === 0) return;
 
     setBusy(true);
-    setMessage(null);
+    setReport(null);
     try {
       await backupBefore("import");
-      const bytes = await invoke<number[]>("read_file_bytes", { path });
-      const data = new Uint8Array(bytes);
-      const fileName = path.split(/[/\\]/).pop() ?? path;
+
+      // Period order first (SPEC-2.md 3.3) — reading each file into memory
+      // and peeking its period before actually importing any of them.
+      const files = await Promise.all(
+        pathList.map(async (filePath) => {
+          const bytes = await invoke<number[]>("read_file_bytes", { path: filePath });
+          const data = new Uint8Array(bytes);
+          const fileName = filePath.split(/[/\\]/).pop() ?? filePath;
+          const periodStart = await peekPeriodStart(data.slice()).catch(() => null);
+          return { fileName, data, periodStart };
+        }),
+      );
+      files.sort((a, b) => (a.periodStart ?? "").localeCompare(b.periodStart ?? ""));
+
       const db = await getDb();
-      const result = await importStatement(db, data, fileName);
-      setMessage(resultMessage(result, fileName));
+      const lines: string[] = [];
+      let totalInserted = 0;
+      for (const file of files) {
+        const result = await importStatement(db, file.data, file.fileName);
+        lines.push(resultMessage(result, file.fileName));
+        if (result.status === "imported") totalInserted += result.inserted;
+      }
+
+      if (files.length > 1) {
+        lines.push(`Итого: добавлено ${totalInserted} операций из ${files.length} файлов.`);
+      }
+
+      const candidates = await buildReviewCandidates(db);
+      const transferCount = candidates.filter((c) => c.kind === "transfer").length;
+      const refundCount = candidates.filter((c) => c.kind === "refund").length;
+      if (transferCount + refundCount > 0) {
+        lines.push(
+          `Найдено ${transferCount} кандидатов в переводы, ${refundCount} в возвраты — откройте «Проверить» в шапке.`,
+        );
+      }
+
+      setReport(lines);
       await refresh();
     } catch (e) {
-      setMessage(`Ошибка импорта: ${String(e)}`);
+      setReport([`Ошибка импорта: ${String(e)}`]);
     } finally {
       setBusy(false);
     }
@@ -89,7 +125,7 @@ export function FilesScreen() {
       if (kind === "replace") {
         await pickAndImport();
       } else {
-        setMessage(`${statement.file_name}: удалено`);
+        setReport([`${statement.file_name}: удалено`]);
       }
     } finally {
       setBusy(false);
@@ -100,9 +136,15 @@ export function FilesScreen() {
     <div className="screen">
       <h2>Файлы</h2>
       <button type="button" onClick={pickAndImport} disabled={busy || readOnly}>
-        {busy ? "Работаю..." : "Импортировать выписку (PDF)"}
+        {busy ? "Работаю..." : "Импортировать выписки (PDF)"}
       </button>
-      {message && <p className="hint">{message}</p>}
+      {report && (
+        <ul className="hint import-report">
+          {report.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      )}
 
       <div className="receipt-grid">
         {statements.map((s) => (
