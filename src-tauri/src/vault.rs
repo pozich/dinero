@@ -7,11 +7,19 @@ struct VaultPointer {
     vault_path: String,
 }
 
+/// `DINERO_CONFIG_DIR` overrides the OS config dir when set — used only by
+/// the e2e smoke test harness (e2e/wdio.conf.mjs) so it runs against a throw-
+/// away vault instead of the user's real one. Absent, nothing changes.
+fn config_dir() -> PathBuf {
+    std::env::var("DINERO_CONFIG_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| dirs::config_dir().expect("no OS config directory found"))
+}
+
 /// The one thing that lives outside the vault itself — otherwise there's
 /// nowhere to look on startup to find it (SPEC.md 2).
 fn pointer_file() -> PathBuf {
-    let config_dir = dirs::config_dir().expect("no OS config directory found");
-    config_dir.join("dinero").join("vault.json")
+    config_dir().join("dinero").join("vault.json")
 }
 
 fn read_pointer() -> Option<PathBuf> {
@@ -35,6 +43,12 @@ pub fn write_pointer(path: &Path) {
 }
 
 fn default_vault_path() -> PathBuf {
+    if std::env::var("DINERO_CONFIG_DIR").is_ok() {
+        // Test isolation (see `config_dir` above) — keep the fresh vault
+        // inside the same throwaway directory rather than falling through
+        // to the user's real Documents folder.
+        return config_dir().join("vault");
+    }
     let base = dirs::document_dir()
         .or_else(dirs::home_dir)
         .unwrap_or_else(std::env::temp_dir);

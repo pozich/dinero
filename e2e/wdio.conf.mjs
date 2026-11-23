@@ -9,6 +9,8 @@
 // Neither was available in the sandbox this was written in, so this harness
 // is written but not yet run end to end — see HANDOFF.md.
 import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,6 +21,10 @@ const appBinary = path.resolve(
 );
 
 let tauriDriver;
+// A fresh throwaway config dir per run — DINERO_CONFIG_DIR (src-tauri/src/
+// vault.rs) makes the app treat it as both the vault pointer location and
+// the default vault folder, so this test never touches the real one.
+let testConfigDir;
 
 export const config = {
   specs: ["./*.spec.mjs"],
@@ -50,12 +56,17 @@ export const config = {
   },
 
   beforeSession: () => {
+    testConfigDir = fs.mkdtempSync(path.join(os.tmpdir(), "dinero-e2e-"));
     tauriDriver = spawn("tauri-driver", [], {
       stdio: [null, process.stdout, process.stderr],
+      env: { ...process.env, DINERO_CONFIG_DIR: testConfigDir },
     });
   },
 
   afterSession: () => {
     tauriDriver?.kill();
+    if (testConfigDir) {
+      fs.rmSync(testConfigDir, { recursive: true, force: true });
+    }
   },
 };
