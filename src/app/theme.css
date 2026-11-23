@@ -364,3 +364,74 @@ button {
   white-space: nowrap;
   margin-top: auto;
 }
+
+.rules-dialog {
+  min-width: 480px;
+}
+
+code {
+  background: var(--surface-hover);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 13px;
+}
+
+.rule-actions button {
+  padding: 2px 6px;
+  margin-right: 2px;
+}
+
+.rule-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.rule-form input[type="text"],
+.rule-form input:not([type]) {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.rule-error {
+  color: #e0806b;
+}
+
+.rule-tester {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.rule-tester input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.rule-match-yes {
+  color: var(--accent);
+}
+
+.rule-match-no {
+  color: var(--text-dim);
+}
+
+.rule-cheatsheet {
+  margin-top: 10px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.rule-cheatsheet table {
+  margin-top: 6px;
+}

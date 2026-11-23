@@ -10,12 +10,23 @@ import {
   type TransactionListItem,
 } from "../../db/transactionsQuery";
 import { setTransactionCategory, setTransactionSplits } from "../../db/transactions";
+import {
+  listCategoryRules,
+  createCategoryRule,
+  updateCategoryRule,
+  deleteCategoryRule,
+  moveCategoryRule,
+  type CategoryRule,
+} from "../../db/categoryRules";
 import { formatTransactionDate, spansMultipleYears } from "./dateFormat";
 import { formatTiyin } from "./money";
 import { toggleSort } from "./sorting";
+import { findMatchingCategory } from "./categoryRuleMatch";
 import { CategoryInput } from "./CategoryInput";
 import { SplitDialog } from "./SplitDialog";
 import { ApplyToSimilarDialog } from "./ApplyToSimilarDialog";
+import { RulesDialog } from "./RulesDialog";
+import { ApplyRulesDialog, type RuleMatch } from "./ApplyRulesDialog";
 
 const COLUMNS: { key: SortColumn; label: string }[] = [
   { key: "occurred_at", label: "Дата" },
@@ -44,7 +55,15 @@ export function OperationsScreen() {
   const [editingCategory, setEditingCategory] = useState(false);
   const [splitFor, setSplitFor] = useState<TransactionListItem | null>(null);
   const [similarPrompt, setSimilarPrompt] = useState<SimilarPrompt | null>(null);
+  const [rules, setRules] = useState<CategoryRule[]>([]);
+  const [showRules, setShowRules] = useState(false);
+  const [ruleMatches, setRuleMatches] = useState<RuleMatch[] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const refreshRules = useCallback(async () => {
+    const db = await getDb();
+    setRules(await listCategoryRules(db));
+  }, []);
 
   const filters: TransactionFilters = useMemo(
     () => ({
@@ -67,7 +86,8 @@ export function OperationsScreen() {
       setAccounts(await listAccounts(db));
       setCategories(await listCategories(db));
     });
-  }, []);
+    refreshRules();
+  }, [refreshRules]);
 
   useEffect(() => {
     refresh();
@@ -157,6 +177,67 @@ export function OperationsScreen() {
     refresh();
   }
 
+  async function createRule(input: { pattern: string; caseSensitive: boolean; categoryName: string }) {
+    const db = await getDb();
+    const categoryId = await findOrCreateCategory(db, input.categoryName);
+    await createCategoryRule(db, {
+      pattern: input.pattern,
+      caseSensitive: input.caseSensitive,
+      categoryId,
+    });
+    setCategories(await listCategories(db));
+    refreshRules();
+  }
+
+  async function updateRule(id: number, patch: { isActive?: boolean }) {
+    const db = await getDb();
+    await updateCategoryRule(db, id, patch);
+    refreshRules();
+  }
+
+  async function deleteRule(id: number) {
+    const db = await getDb();
+    await deleteCategoryRule(db, id);
+    refreshRules();
+  }
+
+  async function moveRule(id: number, direction: "up" | "down") {
+    const db = await getDb();
+    await moveCategoryRule(db, id, direction);
+    refreshRules();
+  }
+
+  async function openApplyRules() {
+    const db = await getDb();
+    const uncategorized = await queryTransactions(db, { onlyUncategorized: true });
+    const categoryById = new Map(categories.map((c) => [c.id, c.name]));
+    const matches: RuleMatch[] = [];
+    for (const transaction of uncategorized) {
+      const categoryId = findMatchingCategory(transaction.description, rules);
+      if (categoryId !== null) {
+        matches.push({
+          transaction,
+          categoryId,
+          categoryName: categoryById.get(categoryId) ?? "?",
+        });
+      }
+    }
+    setRuleMatches(matches);
+  }
+
+  async function applyRules(transactionIds: number[]) {
+    if (!ruleMatches) return;
+    const db = await getDb();
+    for (const id of transactionIds) {
+      const match = ruleMatches.find((m) => m.transaction.id === id);
+      if (match) {
+        await setTransactionCategory(db, id, match.categoryId, match.transaction.amount_tiyin);
+      }
+    }
+    setRuleMatches(null);
+    refresh();
+  }
+
   const showYear = spansMultipleYears(rows.map((r) => r.occurred_at));
 
   return (
@@ -191,6 +272,12 @@ export function OperationsScreen() {
         <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
         <span>—</span>
         <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+        <button type="button" onClick={() => setShowRules(true)}>
+          Правила ({rules.length})
+        </button>
+        <button type="button" onClick={openApplyRules}>
+          Применить правила
+        </button>
       </div>
 
       <table>
@@ -272,6 +359,22 @@ export function OperationsScreen() {
           onApply={applySimilar}
           onClose={() => setSimilarPrompt(null)}
         />
+      )}
+
+      {showRules && (
+        <RulesDialog
+          rules={rules}
+          categories={categories}
+          onCreate={createRule}
+          onUpdate={updateRule}
+          onDelete={deleteRule}
+          onMove={moveRule}
+          onClose={() => setShowRules(false)}
+        />
+      )}
+
+      {ruleMatches && (
+        <ApplyRulesDialog matches={ruleMatches} onApply={applyRules} onClose={() => setRuleMatches(null)} />
       )}
     </div>
   );

@@ -4,10 +4,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DbClient, QueryResult } from "../src/db/types";
 
-const MIGRATION_PATH = path.resolve(
+const MIGRATIONS_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../src-tauri/migrations/0001_init.sql",
+  "../src-tauri/migrations",
 );
+
+function allMigrationsSql(): string {
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort()
+    .map((f) => fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf-8"))
+    .join("\n");
+}
 
 // tauri-plugin-sql (sqlx) uses $1, $2, ... placeholders on SQLite;
 // node:sqlite only understands positional `?`. Both are the same SQLite
@@ -17,11 +26,11 @@ function toPositionalSql(query: string): string {
   return query.replace(/\$\d+/g, "?");
 }
 
-/** An in-memory SQLite database, migrated with the app's real 0001_init.sql,
+/** An in-memory SQLite database, migrated with the app's real migrations,
  * exposed through the same {select, execute} shape as the Tauri sql plugin. */
 export function createTestDb(): DbClient {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(fs.readFileSync(MIGRATION_PATH, "utf-8"));
+  sqlite.exec(allMigrationsSql());
 
   return {
     async select<T>(query: string, bindValues: unknown[] = []): Promise<T> {

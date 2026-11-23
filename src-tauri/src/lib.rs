@@ -36,12 +36,20 @@ pub fn run() {
     let vault_path = vault::resolve_vault_path();
     let db_url = vault::db_url_for(&vault_path);
 
-    let migrations = vec![Migration {
-        version: 1,
-        description: "init_schema",
-        sql: include_str!("../migrations/0001_init.sql"),
-        kind: MigrationKind::Up,
-    }];
+    let migrations = vec![
+        Migration {
+            version: 1,
+            description: "init_schema",
+            sql: include_str!("../migrations/0001_init.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "category_rules",
+            sql: include_str!("../migrations/0002_category_rules.sql"),
+            kind: MigrationKind::Up,
+        },
+    ];
 
     tauri::Builder::default()
         .plugin(
