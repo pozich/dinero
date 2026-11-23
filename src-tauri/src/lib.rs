@@ -26,6 +26,11 @@ fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
 }
 
 #[tauri::command]
+fn write_file_bytes(path: String, contents: Vec<u8>) -> Result<(), String> {
+    std::fs::write(&path, contents).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_db_url(state: tauri::State<'_, VaultState>) -> String {
     state.db_url.clone()
 }
@@ -132,6 +137,12 @@ pub fn run() {
             sql: include_str!("../migrations/0003_transfer_status.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "manual_categories_rules",
+            sql: include_str!("../migrations/0004_manual_categories_rules.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let heartbeat_vault_path = vault_path.clone();
@@ -159,6 +170,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             read_file_bytes,
+            write_file_bytes,
             get_db_url,
             set_vault_path,
             get_lock_conflict,
