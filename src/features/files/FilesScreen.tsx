@@ -10,10 +10,18 @@ import {
 } from "../../db/statements";
 import { importStatement, type ImportResult } from "../../import/importStatement";
 import { peekPeriodStart } from "../../import/peekPeriod";
+import { findMergeCandidates } from "../../import/mergeManualCandidates";
 import { buildReviewCandidates } from "../../review/buildReviewCandidates";
+import { queryTransactions } from "../../db/transactionsQuery";
+import {
+  listManualTransactions,
+  listTransactionsByIdsMatchable,
+  mergeManualIntoImported,
+} from "../../db/manualTransactions";
 import { formatGoldenMismatch } from "./goldenMismatch";
 import { StatementCard } from "./StatementCard";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { MergeManualDialog, type DisplayMergeCandidate } from "./MergeManualDialog";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
 import { backupBefore } from "../../reliability/backups";
 
@@ -35,6 +43,7 @@ export function FilesScreen() {
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<string[] | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const [mergeCandidates, setMergeCandidates] = useState<DisplayMergeCandidate[] | null>(null);
   const readOnly = useReadOnly();
 
   const refresh = useCallback(async () => {
@@ -77,10 +86,14 @@ export function FilesScreen() {
       const db = await getDb();
       const lines: string[] = [];
       let totalInserted = 0;
+      const allInsertedIds: number[] = [];
       for (const file of files) {
         const result = await importStatement(db, file.data, file.fileName);
         lines.push(resultMessage(result, file.fileName));
-        if (result.status === "imported") totalInserted += result.inserted;
+        if (result.status === "imported") {
+          totalInserted += result.inserted;
+          allInsertedIds.push(...result.insertedIds);
+        }
       }
 
       if (files.length > 1) {
@@ -96,6 +109,28 @@ export function FilesScreen() {
         );
       }
 
+      // SPEC-2.md 4.1: "это та же операция?" — check the newly-inserted
+      // rows against existing manual entries.
+      if (allInsertedIds.length > 0) {
+        const manualPool = await listManualTransactions(db);
+        const importedPool = await listTransactionsByIdsMatchable(db, allInsertedIds);
+        const merges = findMergeCandidates(manualPool, importedPool);
+        if (merges.length > 0) {
+          const displayIds = [...new Set(merges.flatMap((m) => [m.manualId, m.importedId]))];
+          const displayRows = await queryTransactions(db, { ids: displayIds });
+          const byId = new Map(displayRows.map((r) => [r.id, r]));
+          const displayCandidates = merges
+            .map((m) => ({
+              manualId: m.manualId,
+              importedId: m.importedId,
+              manual: byId.get(m.manualId),
+              imported: byId.get(m.importedId),
+            }))
+            .filter((c): c is DisplayMergeCandidate => !!c.manual && !!c.imported);
+          if (displayCandidates.length > 0) setMergeCandidates(displayCandidates);
+        }
+      }
+
       setReport(lines);
       await refresh();
     } catch (e) {
@@ -103,6 +138,15 @@ export function FilesScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function applyMerges(chosen: DisplayMergeCandidate[]) {
+    const db = await getDb();
+    for (const c of chosen) {
+      await mergeManualIntoImported(db, c.manualId, c.importedId);
+    }
+    setMergeCandidates(null);
+    await refresh();
   }
 
   async function askAction(statement: StatementSummary, kind: "delete" | "replace") {
@@ -168,6 +212,14 @@ export function FilesScreen() {
           confirmLabel={pending.kind === "delete" ? "Удалить" : "Удалить и выбрать новый файл"}
           onConfirm={confirmPending}
           onCancel={() => setPending(null)}
+        />
+      )}
+
+      {mergeCandidates && (
+        <MergeManualDialog
+          candidates={mergeCandidates}
+          onApply={applyMerges}
+          onClose={() => setMergeCandidates(null)}
         />
       )}
     </div>

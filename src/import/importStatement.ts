@@ -20,17 +20,25 @@ import {
 export type ImportResult =
   | { status: "duplicate_file" }
   | { status: "golden_mismatch"; golden: GoldenResult }
-  | { status: "imported"; accountKind: string; inserted: number; skippedDuplicateRows: number };
+  | {
+      status: "imported";
+      accountKind: string;
+      inserted: number;
+      skippedDuplicateRows: number;
+      insertedIds: number[];
+    };
 
 /** Inserts every transaction for one account, skipping rows whose dedup key
  * already exists (SPEC.md 6.2). Returns the DB id for every input row, in
- * the same order, so callers can link mirrors/fees back to their parent. */
+ * the same order, so callers can link mirrors/fees back to their parent —
+ * plus, separately, just the ids that were *actually* freshly inserted
+ * (not matched to an existing row), for the manual-merge check below. */
 async function insertAll(
   db: DbClient,
   accountKind: string,
   statementId: number | null,
   transactions: ParsedTransaction[],
-): Promise<{ ids: number[]; inserted: number; skipped: number }> {
+): Promise<{ ids: number[]; insertedIds: number[]; inserted: number; skipped: number }> {
   const accountId = await getAccountIdByKind(db, accountKind);
   const keyed = assignDedupKeys(
     transactions.map((t) => ({
@@ -42,6 +50,7 @@ async function insertAll(
   );
 
   const ids: number[] = [];
+  const insertedIds: number[] = [];
   let inserted = 0;
   let skipped = 0;
 
@@ -63,10 +72,11 @@ async function insertAll(
       dedupKey: keyed[i].dedupKey,
     });
     ids.push(id);
+    insertedIds.push(id);
     inserted++;
   }
 
-  return { ids, inserted, skipped };
+  return { ids, insertedIds, inserted, skipped };
 }
 
 async function linkCashMirrors(
@@ -74,18 +84,23 @@ async function linkCashMirrors(
   statementId: number | null,
   parentIds: number[],
   parentTransactions: ParsedTransaction[],
-): Promise<{ inserted: number; skipped: number }> {
+): Promise<{ inserted: number; skipped: number; insertedIds: number[] }> {
   const { mirrors, links } = expandCashMirrors(parentTransactions);
-  if (mirrors.length === 0) return { inserted: 0, skipped: 0 };
+  if (mirrors.length === 0) return { inserted: 0, skipped: 0, insertedIds: [] };
 
-  const { ids: mirrorIds, inserted, skipped } = await insertAll(db, "cash", statementId, mirrors);
+  const { ids: mirrorIds, insertedIds, inserted, skipped } = await insertAll(
+    db,
+    "cash",
+    statementId,
+    mirrors,
+  );
   for (const link of links) {
     await insertTransferLink(db, parentIds[link.parentIndex], mirrorIds[link.cashIndex], {
       status: "confirmed",
       kind: "transfer",
     });
   }
-  return { inserted, skipped };
+  return { inserted, skipped, insertedIds };
 }
 
 export async function importStatement(
@@ -138,6 +153,7 @@ export async function importStatement(
       accountKind: "kaspi_gold",
       inserted: main.inserted + deposit.inserted + cash.inserted,
       skippedDuplicateRows: main.skipped + deposit.skipped + cash.skipped,
+      insertedIds: [...main.insertedIds, ...deposit.insertedIds, ...cash.insertedIds],
     };
   }
 
@@ -180,6 +196,7 @@ export async function importStatement(
       accountKind: statement.accountKind,
       inserted: main.inserted + fees.inserted + cash.inserted,
       skippedDuplicateRows: main.skipped + fees.skipped + cash.skipped,
+      insertedIds: [...main.insertedIds, ...fees.insertedIds, ...cash.insertedIds],
     };
   }
 
@@ -203,6 +220,7 @@ export async function importStatement(
       accountKind: "eurasian",
       inserted: main.inserted,
       skippedDuplicateRows: main.skipped,
+      insertedIds: main.insertedIds,
     };
   }
 
@@ -225,5 +243,6 @@ export async function importStatement(
     accountKind: "bcc",
     inserted: main.inserted,
     skippedDuplicateRows: main.skipped,
+    insertedIds: main.insertedIds,
   };
 }

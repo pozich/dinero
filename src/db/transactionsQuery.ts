@@ -23,6 +23,7 @@ export type TransactionFilters = {
   onlyUncategorized?: boolean;
   periodStart?: string;
   periodEnd?: string;
+  ids?: number[];
 };
 
 export type SortColumn = "occurred_at" | "amount_tiyin" | "description" | "category_name";
@@ -76,6 +77,17 @@ export function buildTransactionsQuery(
   }
   if (filters.onlyUncategorized) {
     having.push("COUNT(s.id) = 0");
+  }
+  if (filters.ids !== undefined) {
+    if (filters.ids.length === 0) {
+      where.push("0 = 1");
+    } else {
+      const placeholders = filters.ids.map((id) => {
+        params.push(id);
+        return `$${params.length}`;
+      });
+      where.push(`t.id IN (${placeholders.join(", ")})`);
+    }
   }
 
   const orderBy =

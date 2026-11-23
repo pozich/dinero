@@ -1,5 +1,32 @@
 import type { DbClient } from "./types";
 import { insertTransaction } from "./transactions";
+import type { MatchableTransaction } from "../import/mergeManualCandidates";
+
+/** Every manual entry, in the shape findMergeCandidates expects — the
+ * column aliases do the camelCase conversion so no mapping step is needed. */
+export function listManualTransactions(db: DbClient): Promise<MatchableTransaction[]> {
+  return db.select<MatchableTransaction[]>(
+    `SELECT t.id, a.kind AS accountKind, t.occurred_at AS occurredAt, t.amount_tiyin AS amountTiyin
+     FROM transactions t
+     JOIN accounts a ON a.id = t.account_id
+     WHERE t.is_manual = 1`,
+  );
+}
+
+export async function listTransactionsByIdsMatchable(
+  db: DbClient,
+  ids: number[],
+): Promise<MatchableTransaction[]> {
+  if (ids.length === 0) return [];
+  const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ");
+  return db.select<MatchableTransaction[]>(
+    `SELECT t.id, a.kind AS accountKind, t.occurred_at AS occurredAt, t.amount_tiyin AS amountTiyin
+     FROM transactions t
+     JOIN accounts a ON a.id = t.account_id
+     WHERE t.id IN (${placeholders})`,
+    ids,
+  );
+}
 
 export type ManualTransactionInput = {
   accountId: number;
