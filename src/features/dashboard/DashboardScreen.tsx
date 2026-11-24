@@ -10,6 +10,7 @@ import type { LedgerRow } from "../../db/ledgerQuery";
 import type { AccountOverview } from "../../db/accountOverview";
 import type { RecurringSeries } from "../../analytics/recurringPayments";
 import type { RecurringSeriesState } from "../../db/recurringSeriesState";
+import { queryInvestmentsOverview, type InvestmentsOverview } from "../../db/investmentsOverview";
 import {
   listPresets,
   createPreset,
@@ -78,6 +79,11 @@ export function DashboardScreen({
   const [overrides, setOverrides] = useState<Partial<Pick<PresetConfig, "period" | "groupMode" | "filters">>>({});
   const [mobile, setMobile] = useState(isMobile());
   const [nameDialog, setNameDialog] = useState<"new" | DashboardPreset | null>(null);
+  const [investmentsOverview, setInvestmentsOverview] = useState<InvestmentsOverview | null>(null);
+
+  useEffect(() => {
+    getDb().then((db) => queryInvestmentsOverview(db)).then(setInvestmentsOverview);
+  }, []);
 
   const refreshPresets = useCallback(async () => {
     const db = await getDb();
@@ -195,13 +201,14 @@ export function DashboardScreen({
             accountOverviews,
             recurringSeries,
             recurringState,
+            investmentsOverview,
             onDrillDown,
             onSetHidden,
             onSetConfirmed,
           },
         };
       }),
-    [config.widgets, effective, allRows, categories, accountOverviews, recurringSeries, recurringState, onDrillDown, onSetHidden, onSetConfirmed],
+    [config.widgets, effective, allRows, categories, accountOverviews, recurringSeries, recurringState, investmentsOverview, onDrillDown, onSetHidden, onSetConfirmed],
   );
 
   const activePreset = presets.find((p) => p.id === activeId) ?? null;

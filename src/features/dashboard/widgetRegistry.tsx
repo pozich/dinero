@@ -24,6 +24,9 @@ import { AccountsOverview } from "../analytics/AccountsOverview";
 import { RecurringPaymentsPanel } from "../analytics/RecurringPaymentsPanel";
 import { CategoryTreeTable } from "../analytics/CategoryTreeTable";
 import type { WidgetConfig, WidgetLayout, WidgetType } from "../../dashboard/presetConfig";
+import type { InvestmentsOverview } from "../../db/investmentsOverview";
+import { PositionsTable } from "../investments/PositionsTable";
+import { buildCompositionOption } from "../investments/portfolioChartOptions";
 
 export type WidgetContext = {
   periodRows: LedgerRow[];
@@ -34,6 +37,7 @@ export type WidgetContext = {
   accountOverviews: AccountOverview[];
   recurringSeries: RecurringSeries[];
   recurringState: Map<string, RecurringSeriesState>;
+  investmentsOverview: InvestmentsOverview | null;
   onDrillDown: (title: string, transactionIds: number[]) => void;
   onSetHidden: (key: string, hidden: boolean) => void;
   onSetConfirmed: (key: string, confirmed: boolean) => void;
@@ -59,6 +63,8 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   metricCards: "Карточки метрик",
   accountsOverview: "Балансы и покрытие",
   recurringPayments: "Регулярные платежи",
+  investmentPositions: "Позиции (инвестиции)",
+  investmentComposition: "Состав портфеля",
 };
 
 export const DEFAULT_WIDGET_LAYOUT: WidgetLayout = { x: 0, y: 0, w: 6, h: 5 };
@@ -136,6 +142,18 @@ export function renderWidget(config: WidgetConfig, ctx: WidgetContext): ReactNod
           onSetConfirmed={ctx.onSetConfirmed}
           onDrillDown={ctx.onDrillDown}
         />
+      );
+    case "investmentPositions":
+      return ctx.investmentsOverview ? (
+        <PositionsTable positions={ctx.investmentsOverview.positions} selectedIsin={null} onSelect={() => {}} />
+      ) : (
+        <p className="hint">Нет данных по инвестициям.</p>
+      );
+    case "investmentComposition":
+      return ctx.investmentsOverview ? (
+        <EChart option={buildCompositionOption(ctx.investmentsOverview.positions)} height="100%" />
+      ) : (
+        <p className="hint">Нет данных по инвестициям.</p>
       );
   }
 }

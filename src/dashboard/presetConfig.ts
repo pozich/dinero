@@ -14,6 +14,8 @@ export const WIDGET_TYPES = [
   "metricCards",
   "accountsOverview",
   "recurringPayments",
+  "investmentPositions",
+  "investmentComposition",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
