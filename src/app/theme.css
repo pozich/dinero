@@ -1807,3 +1807,128 @@ tr.ignored-row {
 .dividends-calendar table {
   margin-top: 12px;
 }
+
+.goals-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.goals-toolbar button {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.goals-toolbar button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.goals-list {
+  max-height: 65vh;
+  overflow: auto;
+}
+
+.goal-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.goal-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.goal-card-name {
+  font-weight: 500;
+}
+
+.goal-status {
+  margin-left: auto;
+  font-size: 11px;
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.goal-status-achieved {
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.goal-status-overdue {
+  color: #e0806b;
+  border: 1px solid #e0806b;
+}
+
+.goal-status-onTrack {
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.goal-status-behind {
+  color: #e0806b;
+  border: 1px solid #e0806b;
+}
+
+.goal-status-ahead {
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.goal-status-noDeadline {
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.goal-progress-bar {
+  background: var(--surface);
+  border-radius: 4px;
+  height: 8px;
+  margin: 8px 0 4px;
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  background: var(--accent);
+  height: 100%;
+}
+
+.goal-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.goal-card-actions button {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.goal-why {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.goal-category-suggestions {
+  list-style: none;
+  padding: 0 0 0 10px;
+  margin: 4px 0;
+}

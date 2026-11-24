@@ -18,6 +18,8 @@ import { DebtsScreen } from "./features/debts/DebtsScreen";
 import { listDebts, listRepayments } from "./db/debts";
 import { listPeople } from "./db/people";
 import { computeDebtBalances } from "./debts/computeDebtBalances";
+import { GoalsScreenLazy } from "./features/goals/GoalsScreenLazy";
+import { queryGoalsOverview } from "./db/goalsOverview";
 import { getDb } from "./db/client";
 import { CommandProvider, useRegisterCommands } from "./features/commandPalette/CommandContext";
 import { CommandPalette } from "./features/commandPalette/CommandPalette";
@@ -130,6 +132,28 @@ function DebtsButton() {
   );
 }
 
+function GoalsButton() {
+  const [count, setCount] = useState(0);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    getDb()
+      .then((db) => queryGoalsOverview(db))
+      .then((items) => items.filter((i) => i.plan.kind !== "achieved").length)
+      .then(setCount)
+      .catch(() => {});
+  }, []);
+
+  return (
+    <>
+      <button type="button" className="review-button" onClick={() => setOpen(true)}>
+        Цели ({count})
+      </button>
+      {open && <GoalsScreenLazy onClose={() => setOpen(false)} onCountChange={setCount} />}
+    </>
+  );
+}
+
 const TAB_LABELS: Record<TabId, string> = {
   files: "Файлы",
   operations: "Категории + Операции",
@@ -185,6 +209,7 @@ function AppShell() {
         <TabBar active={tab} onChange={setTab} />
         <ReviewButton />
         <DebtsButton />
+        <GoalsButton />
         <UndoControls />
       </div>
       {tab === "files" && <FilesScreen />}
