@@ -1,28 +1,40 @@
-import { useState } from "react";
+import { useRef } from "react";
 import { AnalyticsScreenLazy } from "./AnalyticsScreenLazy";
 import { InvestmentsScreenLazy } from "../investments/InvestmentsScreenLazy";
 
-type SubTab = "analytics" | "investments";
+type SectionId = "analytics" | "investments";
 
-const SUB_TABS: { id: SubTab; label: string }[] = [
+const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "analytics", label: "Аналитика" },
   { id: "investments", label: "Инвестиции" },
 ];
 
+/** Аналитика/Инвестиции — один экран: обе секции смонтированы и видны сразу,
+ * верхняя навигация только прокручивает к секции, не переключает контент. */
 export function AnalyticsHubScreen() {
-  const [sub, setSub] = useState<SubTab>("analytics");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  function scrollTo(id: SectionId) {
+    containerRef.current
+      ?.querySelector(`#hub-section-${id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
-    <div className="hub-screen">
-      <div className="hub-subnav">
-        {SUB_TABS.map((t) => (
-          <button key={t.id} type="button" className={t.id === sub ? "active" : ""} onClick={() => setSub(t.id)}>
-            {t.label}
+    <div className="hub-screen" ref={containerRef}>
+      <div className="hub-nav">
+        {SECTIONS.map((s) => (
+          <button key={s.id} type="button" onClick={() => scrollTo(s.id)}>
+            {s.label}
           </button>
         ))}
       </div>
-      {sub === "analytics" && <AnalyticsScreenLazy />}
-      {sub === "investments" && <InvestmentsScreenLazy />}
+      <div className="hub-section" id="hub-section-analytics">
+        <AnalyticsScreenLazy />
+      </div>
+      <div className="hub-section" id="hub-section-investments">
+        <InvestmentsScreenLazy />
+      </div>
     </div>
   );
 }

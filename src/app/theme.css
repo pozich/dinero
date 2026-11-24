@@ -2213,15 +2213,28 @@ tr.ignored-row {
   background: linear-gradient(135deg, #2b2e36 60%, #353942 100%);
 }
 
-.hub-subnav {
+/* Общий экран (Файлы+Настройки+Данные / Аналитика+Инвестиции) — все секции
+ * смонтированы и видны сразу на одной прокручиваемой странице; .hub-nav —
+ * это якоря для прокрутки к секции, а не переключатель контента (его явно
+ * попросили не делать подвкладками). */
+.hub-screen {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.hub-nav {
   display: flex;
   gap: 4px;
   border-bottom: 1px solid var(--border);
   padding: 0 24px;
-  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1;
 }
 
-.hub-subnav button {
+.hub-nav button {
   background: transparent;
   border: none;
   border-radius: 0;
@@ -2231,27 +2244,17 @@ tr.ignored-row {
   cursor: pointer;
 }
 
-.hub-subnav button:hover {
-  color: var(--text);
-  border-color: transparent;
-}
-
-.hub-subnav button.active {
+.hub-nav button:hover {
   color: var(--accent);
-  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-.hub-screen {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
+.hub-section {
+  scroll-margin-top: 41px; /* высота .hub-nav, чтобы якорь не прятался под ней */
+  border-bottom: 1px solid var(--border);
 }
 
-.hub-screen > .screen {
-  flex: 1;
-  overflow: auto;
+.hub-section:last-child {
+  border-bottom: none;
 }
 
 .data-management-buttons {
