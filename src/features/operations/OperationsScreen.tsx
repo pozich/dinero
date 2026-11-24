@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 import { getDb } from "../../db/client";
+import { buildCsv } from "../../export/exportCsv";
 import { listAccounts, type Account } from "../../db/accounts";
 import { listCategories, findOrCreateCategory, type Category } from "../../db/categories";
 import {
@@ -486,6 +489,19 @@ export function OperationsScreen() {
     refresh();
   }
 
+  async function exportCsv() {
+    const path = await save({
+      defaultPath: "dinero.csv",
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (!path) return;
+    const csv = buildCsv(rows, categories);
+    // A UTF-8 BOM so Excel on Windows detects the encoding and shows
+    // Cyrillic text correctly instead of mangling it.
+    const bytes = Array.from(new TextEncoder().encode("﻿" + csv));
+    await invoke("write_file_bytes", { path, contents: bytes });
+  }
+
   async function toggleIgnored(row: TransactionListItem) {
     const db = await getDb();
     await withUndo(
@@ -537,6 +553,9 @@ export function OperationsScreen() {
         </button>
         <button type="button" onClick={openApplyRules} disabled={readOnly}>
           Применить правила
+        </button>
+        <button type="button" onClick={exportCsv} title="Экспортирует то, что сейчас показано — с учётом фильтров">
+          Экспорт CSV
         </button>
         <button
           type="button"
