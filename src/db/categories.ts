@@ -5,6 +5,8 @@ export type Category = {
   name: string;
   parent_id: number | null;
   is_system: number;
+  color: string | null;
+  icon: string | null;
 };
 
 export function listCategories(db: DbClient): Promise<Category[]> {
