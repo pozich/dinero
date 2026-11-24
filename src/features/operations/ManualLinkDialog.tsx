@@ -4,16 +4,18 @@ import { queryTransactions, type TransactionListItem } from "../../db/transactio
 import { formatTransactionDate } from "./dateFormat";
 import { formatTiyin } from "./money";
 
-/** Manual pairing (SPEC-2.md 3.1: right-click → "Связать как перевод с…")
- * for when the automatic matcher didn't find a candidate — only shows
- * opposite-sign operations, since a transfer always has one side leaving
- * and one side arriving. */
+/** Manual pairing (SPEC-2.md 3.1/Ф4: right-click → "Связать как перевод/
+ * возврат с…") for when the automatic matcher didn't find a candidate.
+ * A transfer's counterpart is a different account, opposite sign; a
+ * refund's is the *same* account, opposite sign. */
 export function ManualLinkDialog({
   row,
+  kind,
   onPick,
   onClose,
 }: {
   row: TransactionListItem;
+  kind: "transfer" | "refund";
   onPick: (other: TransactionListItem) => void;
   onClose: () => void;
 }) {
@@ -29,16 +31,21 @@ export function ManualLinkDialog({
       const found = await queryTransactions(db, { search: search.trim() });
       setResults(
         found
-          .filter((r) => r.id !== row.id && Math.sign(r.amount_tiyin) !== Math.sign(row.amount_tiyin))
+          .filter(
+            (r) =>
+              r.id !== row.id &&
+              Math.sign(r.amount_tiyin) !== Math.sign(row.amount_tiyin) &&
+              (kind === "refund" ? r.account_id === row.account_id : r.account_id !== row.account_id),
+          )
           .slice(0, 20),
       );
     });
-  }, [search, row.id, row.amount_tiyin]);
+  }, [search, row.id, row.amount_tiyin, row.account_id, kind]);
 
   return (
     <div className="modal-backdrop">
       <div className="modal">
-        <h3>Связать как перевод с…</h3>
+        <h3>Связать как {kind === "refund" ? "возврат" : "перевод"} с…</h3>
         <p className="hint">
           {row.description} · {formatTiyin(row.amount_tiyin)} · {formatTransactionDate(row.occurred_at, true)}
         </p>

@@ -715,6 +715,37 @@ code {
   gap: 6px !important;
 }
 
+.column-toggle {
+  position: relative;
+}
+
+.column-toggle-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  z-index: 50;
+}
+
+.column-toggle:hover .column-toggle-menu,
+.column-toggle:focus-within .column-toggle-menu {
+  display: block;
+}
+
+.column-toggle-menu label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  padding: 2px 0;
+}
+
 .manual-add-button {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -754,6 +785,104 @@ code {
 
 tr.ignored-row {
   opacity: 0.45;
+}
+
+.vtable {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-top: 12px;
+  height: 60vh;
+  user-select: none;
+}
+
+.vtable-header {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.vtable-header-cell {
+  position: relative;
+  padding: 6px 10px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.vtable-header-cell:hover {
+  color: var(--text);
+}
+
+.vtable-resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+}
+
+.vtable-body {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+}
+
+.vtable-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+
+.vtable-row:hover {
+  background: var(--surface-hover);
+}
+
+.vtable-row.selected-row {
+  background: rgba(125, 211, 192, 0.12);
+}
+
+.vtable-row.active-row {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.vtable-cell {
+  padding: 0 10px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.marquee-box {
+  position: fixed;
+  border: 1px solid var(--accent);
+  background: rgba(125, 211, 192, 0.1);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.bulk-action-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
 }
 
 .review-list {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatTransactionDate, spansMultipleYears } from "../../src/features/operations/dateFormat";
 import { formatTiyin, parseTiyinInput } from "../../src/features/operations/money";
-import { toggleSort } from "../../src/features/operations/sorting";
+import { toggleSort, addSecondarySort } from "../../src/features/operations/sorting";
 
 describe("formatTransactionDate", () => {
   it("omits the year by default", () => {
@@ -61,6 +61,31 @@ describe("toggleSort", () => {
     const state = [{ column: "occurred_at", direction: "asc" }] as const;
     expect(toggleSort([...state], "amount_tiyin")).toEqual([
       { column: "amount_tiyin", direction: "asc" },
+      { column: "occurred_at", direction: "asc" },
+    ]);
+  });
+});
+
+describe("addSecondarySort (Shift+click)", () => {
+  it("appends a new column at the end, ascending — doesn't disturb priority", () => {
+    const state = [{ column: "occurred_at", direction: "asc" }] as const;
+    expect(addSecondarySort([...state], "amount_tiyin")).toEqual([
+      { column: "occurred_at", direction: "asc" },
+      { column: "amount_tiyin", direction: "asc" },
+    ]);
+  });
+
+  it("cycles an existing secondary column in place: asc -> desc -> removed", () => {
+    const state = [
+      { column: "occurred_at", direction: "asc" },
+      { column: "amount_tiyin", direction: "asc" },
+    ] as const;
+    const desc = addSecondarySort([...state], "amount_tiyin");
+    expect(desc).toEqual([
+      { column: "occurred_at", direction: "asc" },
+      { column: "amount_tiyin", direction: "desc" },
+    ]);
+    expect(addSecondarySort(desc, "amount_tiyin")).toEqual([
       { column: "occurred_at", direction: "asc" },
     ]);
   });

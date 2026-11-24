@@ -7,7 +7,6 @@ import { listAccounts, type Account } from "../../db/accounts";
 import { listCategories, findOrCreateCategory, type Category } from "../../db/categories";
 import {
   queryTransactions,
-  type SortColumn,
   type SortSpec,
   type TransactionFilters,
   type TransactionListItem,
@@ -21,17 +20,18 @@ import {
   moveCategoryRule,
   type CategoryRule,
 } from "../../db/categoryRules";
-import { formatTransactionDate, spansMultipleYears } from "./dateFormat";
-import { formatTiyin } from "./money";
-import { toggleSort } from "./sorting";
+import { spansMultipleYears } from "./dateFormat";
 import { findMatchingCategory } from "./categoryRuleMatch";
-import { CategoryInput } from "./CategoryInput";
 import { SplitDialog } from "./SplitDialog";
 import { ApplyToSimilarDialog } from "./ApplyToSimilarDialog";
 import { RulesDialog, type NewRuleInput } from "./RulesDialog";
 import { ApplyRulesDialog, type RuleMatch } from "./ApplyRulesDialog";
 import { ManualLinkDialog } from "./ManualLinkDialog";
 import { ManualTransactionDialog, type ManualFormResult } from "./ManualTransactionDialog";
+import { OperationsTable } from "./OperationsTable";
+import { BulkActionBar } from "./BulkActionBar";
+import { selectAll } from "./selection";
+import { DEFAULT_COLUMNS, mergeWithDefaults, reorderColumns, toggleColumnVisibility, type ColumnConfig } from "./tableColumns";
 import { useUndoStack } from "../../undo/UndoContext";
 import { withUndo } from "../../undo/undoStack";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
@@ -55,13 +55,6 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-const COLUMNS: { key: SortColumn; label: string }[] = [
-  { key: "occurred_at", label: "Дата" },
-  { key: "amount_tiyin", label: "Сумма" },
-  { key: "description", label: "Описание" },
-  { key: "category_name", label: "Категория" },
-];
-
 type SimilarPrompt = {
   categoryId: number;
   categoryName: string;
@@ -84,7 +77,16 @@ export function OperationsScreen() {
   const [periodEnd, setPeriodEnd] = useState("");
   const [sort, setSort] = useState<SortSpec[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [editingCategory, setEditingCategory] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [columns, setColumns] = useState<ColumnConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem("dinero.operationsColumns");
+      return saved ? mergeWithDefaults(JSON.parse(saved)) : DEFAULT_COLUMNS;
+    } catch {
+      return DEFAULT_COLUMNS;
+    }
+  });
   const [splitFor, setSplitFor] = useState<TransactionListItem | null>(null);
   const [similarPrompt, setSimilarPrompt] = useState<SimilarPrompt | null>(null);
   const [rules, setRules] = useState<CategoryRule[]>([]);
@@ -96,7 +98,10 @@ export function OperationsScreen() {
     y: number;
     linkId: number | null;
   } | null>(null);
-  const [manualLinkFor, setManualLinkFor] = useState<TransactionListItem | null>(null);
+  const [manualLinkFor, setManualLinkFor] = useState<{
+    row: TransactionListItem;
+    kind: "transfer" | "refund";
+  } | null>(null);
   const [manualDialog, setManualDialog] = useState<TransactionListItem | "new" | null>(null);
   const [rulePrefill, setRulePrefill] = useState<{ pattern: string; categoryName: string } | null>(
     null,
@@ -139,6 +144,14 @@ export function OperationsScreen() {
   }, [refresh]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem("dinero.operationsColumns", JSON.stringify(columns));
+    } catch {
+      // per-viewer convenience only — fine to lose on a private window etc.
+    }
+  }, [columns]);
+
+  useEffect(() => {
     if (activeIndex !== null && activeIndex >= rows.length) {
       setActiveIndex(rows.length > 0 ? rows.length - 1 : null);
     }
@@ -150,12 +163,19 @@ export function OperationsScreen() {
       if (isSaveChord) {
         e.preventDefault();
         if (!readOnly && activeIndex !== null && rows[activeIndex]) {
-          setEditingCategory(false);
+          setEditingId(null);
           setSplitFor(rows[activeIndex]);
         }
         return;
       }
-      if (editingCategory || splitFor || similarPrompt || manualDialog) return;
+      const isSelectAllChord = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a";
+      if (isSelectAllChord && !editingId && !splitFor && !similarPrompt && !manualDialog) {
+        if (isTypingTarget(e.target)) return;
+        e.preventDefault();
+        setSelectedIds(selectAll(rows));
+        return;
+      }
+      if (editingId !== null || splitFor || similarPrompt || manualDialog) return;
       if (isTypingTarget(e.target)) return;
 
       if (e.key === "ArrowDown") {
@@ -168,24 +188,26 @@ export function OperationsScreen() {
         if (activeIndex === null && rows.length > 0) {
           e.preventDefault();
           setActiveIndex(0);
-          setEditingCategory(true);
+          setEditingId(rows[0].id);
         } else if (activeIndex !== null) {
           e.preventDefault();
-          setEditingCategory(true);
+          setEditingId(rows[activeIndex].id);
         }
       } else if (e.key.toLowerCase() === "n" && !readOnly) {
         e.preventDefault();
         setManualDialog("new");
+      } else if (e.key === "Escape") {
+        setSelectedIds(new Set());
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex, editingCategory, rows, splitFor, similarPrompt, manualDialog, readOnly]);
+  }, [activeIndex, editingId, rows, splitFor, similarPrompt, manualDialog, readOnly]);
 
   async function commitCategory(name: string) {
-    const row = activeIndex !== null ? rows[activeIndex] : undefined;
-    setEditingCategory(false);
+    const row = rows.find((r) => r.id === editingId);
+    setEditingId(null);
     if (!row || readOnly) return;
 
     const db = await getDb();
@@ -394,12 +416,20 @@ export function OperationsScreen() {
 
   async function manualConfirm(other: TransactionListItem) {
     if (!manualLinkFor) return;
+    const { row, kind } = manualLinkFor;
     const db = await getDb();
-    const [from, to] = manualLinkFor.amount_tiyin < 0 ? [manualLinkFor, other] : [other, manualLinkFor];
-    const id = await confirmTransferLink(db, from.id, to.id, "transfer");
-    undoStack?.pushCreated(`Перевод: ${from.description} → ${to.description}`, "transfer_links", id);
+    const [from, to] = row.amount_tiyin < 0 ? [row, other] : [other, row];
+    const id = await confirmTransferLink(db, from.id, to.id, kind);
+    const label = kind === "refund" ? "Возврат" : "Перевод";
+    undoStack?.pushCreated(`${label}: ${from.description} → ${to.description}`, "transfer_links", id);
     setManualLinkFor(null);
     refresh();
+  }
+
+  function createRuleFromRow(row: TransactionListItem) {
+    setRulePrefill({ pattern: escapeForRegex(row.description), categoryName: "" });
+    setContextMenu(null);
+    setShowRules(true);
   }
 
   async function saveManual(result: ManualFormResult) {
@@ -489,13 +519,13 @@ export function OperationsScreen() {
     refresh();
   }
 
-  async function exportCsv() {
+  async function exportCsv(rowsToExport: TransactionListItem[] = rows) {
     const path = await save({
       defaultPath: "dinero.csv",
       filters: [{ name: "CSV", extensions: ["csv"] }],
     });
     if (!path) return;
-    const csv = buildCsv(rows, categories);
+    const csv = buildCsv(rowsToExport, categories);
     // A UTF-8 BOM so Excel on Windows detects the encoding and shows
     // Cyrillic text correctly instead of mangling it.
     const bytes = Array.from(new TextEncoder().encode("﻿" + csv));
@@ -511,6 +541,62 @@ export function OperationsScreen() {
       () => setTransactionIgnored(db, row.id, !row.is_ignored),
     );
     setContextMenu(null);
+    refresh();
+  }
+
+  const selectedRows = rows.filter((r) => selectedIds.has(r.id));
+  const allSelectedIgnored = selectedRows.length > 0 && selectedRows.every((r) => r.is_ignored);
+  const canBulkLink =
+    selectedRows.length === 2 && Math.sign(selectedRows[0].amount_tiyin) !== Math.sign(selectedRows[1].amount_tiyin);
+
+  async function bulkSetCategory(name: string) {
+    if (readOnly || selectedRows.length === 0) return;
+    await backupBefore("bulk_action");
+    const db = await getDb();
+    const categoryId = await findOrCreateCategory(db, name);
+    const specs = selectedRows.map((r) => ({
+      table: "splits",
+      whereSql: "transaction_id = $1",
+      params: [r.id],
+    }));
+    await withUndo(undoStack, `Категория «${name}» на ${selectedRows.length} операций`, specs, async () => {
+      for (const r of selectedRows) {
+        await setTransactionCategory(db, r.id, categoryId, r.amount_tiyin);
+      }
+    });
+    setCategories(await listCategories(db));
+    refresh();
+  }
+
+  async function bulkToggleIgnored() {
+    if (readOnly || selectedRows.length === 0) return;
+    const nextIgnored = !allSelectedIgnored;
+    const db = await getDb();
+    const specs = selectedRows.map((r) => ({
+      table: "transactions",
+      whereSql: "id = $1",
+      params: [r.id],
+    }));
+    await withUndo(
+      undoStack,
+      nextIgnored ? "Не учитывать выбранное" : "Учитывать выбранное",
+      specs,
+      async () => {
+        for (const r of selectedRows) await setTransactionIgnored(db, r.id, nextIgnored);
+      },
+    );
+    refresh();
+  }
+
+  async function bulkLink(kind: "transfer" | "refund") {
+    if (readOnly || !canBulkLink) return;
+    const [a, b] = selectedRows;
+    const [from, to] = a.amount_tiyin < 0 ? [a, b] : [b, a];
+    const db = await getDb();
+    const id = await confirmTransferLink(db, from.id, to.id, kind);
+    const label = kind === "refund" ? "Возврат" : "Перевод";
+    undoStack?.pushCreated(`${label}: ${from.description} → ${to.description}`, "transfer_links", id);
+    setSelectedIds(new Set());
     refresh();
   }
 
@@ -554,9 +640,29 @@ export function OperationsScreen() {
         <button type="button" onClick={openApplyRules} disabled={readOnly}>
           Применить правила
         </button>
-        <button type="button" onClick={exportCsv} title="Экспортирует то, что сейчас показано — с учётом фильтров">
+        <button type="button" onClick={() => exportCsv()} title="Экспортирует то, что сейчас показано — с учётом фильтров">
           Экспорт CSV
         </button>
+        <div className="column-toggle">
+          <button type="button" title="Какие колонки показывать">
+            Колонки
+          </button>
+          <div className="column-toggle-menu">
+            {columns.map((c) => (
+              <label key={c.key}>
+                <input
+                  type="checkbox"
+                  checked={c.visible}
+                  onChange={() => setColumns((cols) => toggleColumnVisibility(cols, c.key))}
+                />
+                {c.key === "occurred_at" && "Дата"}
+                {c.key === "amount_tiyin" && "Сумма"}
+                {c.key === "description" && "Описание"}
+                {c.key === "category_name" && "Категория"}
+              </label>
+            ))}
+          </div>
+        </div>
         <button
           type="button"
           className="manual-add-button"
@@ -568,82 +674,48 @@ export function OperationsScreen() {
         </button>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            {COLUMNS.map((col) => {
-              const priority = sort.findIndex((s) => s.column === col.key);
-              const spec = priority === -1 ? null : sort[priority];
-              return (
-                <th
-                  key={col.key}
-                  className="sortable"
-                  onClick={() => setSort((s) => toggleSort(s, col.key))}
-                >
-                  {col.label}
-                  {spec && (
-                    <span className="sort-badge">
-                      {priority + 1}
-                      {spec.direction === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr
-              key={row.id}
-              className={[
-                i === activeIndex ? "active-row" : "",
-                row.is_ignored ? "ignored-row" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onContextMenu={(e) => openContextMenu(e, row)}
-            >
-              <td>{formatTransactionDate(row.occurred_at, showYear)}</td>
-              <td>{formatTiyin(row.amount_tiyin)}</td>
-              <td>
-                {!!row.is_manual && (
-                  <span className="manual-icon" title="Ручная операция">
-                    ●
-                  </span>
-                )}
-                {row.description}
-              </td>
-              <td
-                className="category-cell"
-                onClick={() => {
-                  if (readOnly) return;
-                  setActiveIndex(i);
-                  setEditingCategory(true);
-                }}
-              >
-                {i === activeIndex && editingCategory ? (
-                  <CategoryInput
-                    initialValue={row.category_name ?? ""}
-                    categories={categories}
-                    onCommit={commitCategory}
-                    onCancel={() => setEditingCategory(false)}
-                  />
-                ) : row.split_count > 1 ? (
-                  `Разрез (${row.split_count})`
-                ) : (
-                  (row.category_name ?? "—")
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <OperationsTable
+        rows={rows}
+        categories={categories}
+        columns={columns}
+        onColumnsChange={setColumns}
+        onReorderColumn={(from, to) => setColumns((cols) => reorderColumns(cols, from, to))}
+        sort={sort}
+        onSortChange={setSort}
+        activeIndex={activeIndex}
+        onActiveIndexChange={setActiveIndex}
+        selectedIds={selectedIds}
+        onSelectedIdsChange={setSelectedIds}
+        editingId={editingId}
+        onStartEdit={(row) => setEditingId(row.id)}
+        onCommitCategory={commitCategory}
+        onCancelEdit={() => setEditingId(null)}
+        onContextMenu={openContextMenu}
+        onSwipeLeft={(row) => setEditingId(row.id)}
+        onSwipeRight={toggleIgnored}
+        showYear={showYear}
+        readOnly={readOnly}
+      />
+
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          categories={categories}
+          allIgnored={allSelectedIgnored}
+          canLink={canBulkLink}
+          onApplyCategory={bulkSetCategory}
+          onToggleIgnored={bulkToggleIgnored}
+          onLink={bulkLink}
+          onExport={() => exportCsv(selectedRows)}
+          onClear={() => setSelectedIds(new Set())}
+        />
+      )}
 
       <p className="hint">
         {rows.length} операций.{" "}
         <span className="keyboard-hint">
-          ↑/↓ — выбрать строку, Enter — категория, Ctrl+S — разрез, N — новая операция.
+          ↑/↓ — выбрать строку, Enter/двойной клик — категория, Ctrl+S — разрез, N — новая
+          операция, Ctrl+A — выбрать все, Shift/Ctrl+клик — выделение, рамка мышью.
         </span>
       </p>
 
@@ -704,23 +776,45 @@ export function OperationsScreen() {
           >
             Изменить
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingId(null);
+              setSplitFor(contextMenu.row);
+              setContextMenu(null);
+            }}
+          >
+            Разрезать
+          </button>
           <button type="button" onClick={() => toggleIgnored(contextMenu.row)}>
             {contextMenu.row.is_ignored ? "Учитывать" : "Не учитывать"}
           </button>
           <button
             type="button"
             onClick={() => {
-              setManualLinkFor(contextMenu.row);
+              setManualLinkFor({ row: contextMenu.row, kind: "transfer" });
               setContextMenu(null);
             }}
           >
             Связать как перевод с…
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setManualLinkFor({ row: contextMenu.row, kind: "refund" });
+              setContextMenu(null);
+            }}
+          >
+            Связать как возврат с…
           </button>
           {contextMenu.linkId !== null && (
             <button type="button" onClick={() => unlink(contextMenu.linkId!)}>
               Разорвать связь
             </button>
           )}
+          <button type="button" onClick={() => createRuleFromRow(contextMenu.row)}>
+            Создать правило
+          </button>
         </div>
       )}
 
@@ -739,7 +833,8 @@ export function OperationsScreen() {
 
       {manualLinkFor && (
         <ManualLinkDialog
-          row={manualLinkFor}
+          row={manualLinkFor.row}
+          kind={manualLinkFor.kind}
           onPick={manualConfirm}
           onClose={() => setManualLinkFor(null)}
         />

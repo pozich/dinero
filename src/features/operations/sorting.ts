@@ -11,3 +11,15 @@ export function toggleSort(current: SortSpec[], column: SortColumn): SortSpec[] 
   if (existing.direction === "asc") return [{ column, direction: "desc" }, ...rest];
   return rest;
 }
+
+/** Shift+click (SPEC-2.md Ф4): adds/cycles a column as a *secondary* sort
+ * without disturbing the priority of the others — the opposite of
+ * `toggleSort`, which always promotes the clicked column to the front. */
+export function addSecondarySort(current: SortSpec[], column: SortColumn): SortSpec[] {
+  const index = current.findIndex((s) => s.column === column);
+  if (index === -1) return [...current, { column, direction: "asc" }];
+  if (current[index].direction === "asc") {
+    return current.map((s, i) => (i === index ? { ...s, direction: "desc" } : s));
+  }
+  return current.filter((s) => s.column !== column);
+}
