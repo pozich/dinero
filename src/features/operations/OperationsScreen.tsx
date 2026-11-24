@@ -713,6 +713,9 @@ export function OperationsScreen() {
             </option>
           ))}
         </select>
+        <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+        <span>—</span>
+        <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
         <label>
           <input
             type="checkbox"
@@ -721,9 +724,9 @@ export function OperationsScreen() {
           />
           без категории
         </label>
-        <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
-        <span>—</span>
-        <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+      </div>
+
+      <div className="filters filters-secondary">
         <button type="button" onClick={() => setShowRules(true)}>
           Правила ({rules.length})
         </button>

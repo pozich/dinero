@@ -89,6 +89,13 @@ export function OperationsTable({
     overscan: 12,
   });
 
+  // Без этого стрелки ↑/↓ меняют activeIndex, но строка может оказаться
+  // за пределами виртуализированного окна рендера — ничего не видно, и
+  // кажется, что хоткей просто не работает.
+  useEffect(() => {
+    if (activeIndex !== null) virtualizer.scrollToIndex(activeIndex, { align: "auto" });
+  }, [activeIndex, virtualizer]);
+
   const visibleColumns = columns.filter((c) => c.visible);
 
   function selectRow(row: TransactionListItem, e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) {

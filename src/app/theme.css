@@ -321,6 +321,19 @@ tr.active-row {
   font-size: 13px;
 }
 
+/* Фильтры (что показать) и действия (что сделать с показанным) — две
+ * разные по смыслу группы, визуально разведены, чтобы не сливались в
+ * одну стену кнопок. */
+.filters-secondary {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.filters-secondary button,
+.filters-secondary .column-toggle button {
+  font-size: 13px;
+}
+
 /* Любой необёрнутый нативный контрол (select/date-picker/checkbox/radio)
    иначе рисуется виджет-тулкитом окна (GTK), а не нашим CSS — цвет текста
    у нас наследуется от body и тёмный, а фон у системного виджета остаётся
