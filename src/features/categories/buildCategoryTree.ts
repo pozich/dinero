@@ -5,7 +5,7 @@ export type TreeNode = Category & { children: TreeNode[] };
 /** Nests the flat `categories` table into a tree by `parent_id`, siblings
  * sorted alphabetically at every level — shared by the category manager
  * and the operations sidebar (SPEC-2.md 4.3/Ф4). */
-export function buildCategoryTree(categories: Category[]): TreeNode[] {
+export function buildCategoryTree(categories: readonly Category[]): TreeNode[] {
   const byId = new Map<number, TreeNode>(categories.map((c) => [c.id, { ...c, children: [] }]));
   const roots: TreeNode[] = [];
   for (const node of byId.values()) {
