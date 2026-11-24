@@ -95,8 +95,15 @@ export async function deleteStatement(db: DbClient, statementId: number): Promis
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ");
     const params = ids.map((r) => r.id);
     await db.execute(`DELETE FROM splits WHERE transaction_id IN (${placeholders})`, params);
+
+    // Two independent placeholder ranges, not the same $N reused twice in
+    // one statement — a bound value reused that way works by accident
+    // against the test harness's naive translator but not against the
+    // real sqlx backend, which expects exactly one value per $N.
+    const fromPlaceholders = ids.map((_, i) => `$${i + 1}`).join(", ");
+    const toPlaceholders = ids.map((_, i) => `$${i + 1 + ids.length}`).join(", ");
     await db.execute(
-      `DELETE FROM transfer_links WHERE from_transaction_id IN (${placeholders}) OR to_transaction_id IN (${placeholders})`,
+      `DELETE FROM transfer_links WHERE from_transaction_id IN (${fromPlaceholders}) OR to_transaction_id IN (${toPlaceholders})`,
       [...params, ...params],
     );
   }
