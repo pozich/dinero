@@ -4,6 +4,9 @@ function formatDate(iso: string): string {
   return iso.slice(0, 10);
 }
 
+/** Одностороняя карточка (без флипа — он скрывал кнопки замена/удаления за
+ * наведением, что и было непонятно пользователю) — иконки действий всегда
+ * видны внизу. */
 export function StatementCard({
   statement,
   onDelete,
@@ -14,24 +17,22 @@ export function StatementCard({
   onReplace?: () => void;
 }) {
   return (
-    <div className="receipt-flip">
-      <div className="receipt-inner">
-        <div className="receipt-face receipt-front">
-          <div className="receipt-bank">{statement.account_name}</div>
-          <div className="receipt-period">
-            {formatDate(statement.period_start)} — {formatDate(statement.period_end)}
-          </div>
-          <div className="receipt-count">{statement.transaction_count} операций</div>
-          <div className="receipt-file">{statement.file_name}</div>
+    <div className="statement-card">
+      <div className="statement-card-body">
+        <div className="statement-card-bank">{statement.account_name}</div>
+        <div className="statement-card-period">
+          {formatDate(statement.period_start)} — {formatDate(statement.period_end)}
         </div>
-        <div className="receipt-face receipt-back">
-          <button type="button" onClick={onReplace} disabled={!onReplace}>
-            Заменить
-          </button>
-          <button type="button" onClick={onDelete} disabled={!onDelete}>
-            Удалить
-          </button>
-        </div>
+        <div className="statement-card-count">{statement.transaction_count} операций</div>
+        <div className="statement-card-file">{statement.file_name}</div>
+      </div>
+      <div className="statement-card-actions">
+        <button type="button" title="Заменить файл" onClick={onReplace} disabled={!onReplace}>
+          ⟲
+        </button>
+        <button type="button" title="Удалить" onClick={onDelete} disabled={!onDelete}>
+          ✕
+        </button>
       </div>
     </div>
   );

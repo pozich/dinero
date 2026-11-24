@@ -531,68 +531,99 @@ input[type="radio"] {
   background: var(--surface-hover);
 }
 
-.receipt-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+.statement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 160px);
+  gap: 16px;
   margin-top: 16px;
 }
 
-.receipt-flip {
-  width: 200px;
-  height: 140px;
-  perspective: 1000px;
-}
-
-.receipt-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transition: transform 0.5s;
-  transform-style: preserve-3d;
-}
-
-.receipt-flip:hover .receipt-inner {
-  transform: rotateY(180deg);
-}
-
-.receipt-face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  border-radius: 6px;
-  border: 1px dashed var(--border);
+.statement-card {
+  width: 160px;
+  height: 240px; /* 2:3 — "3 в высоту" */
+  border-radius: 8px;
+  border: 1px solid var(--border);
   background: var(--surface);
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.receipt-back {
-  transform: rotateY(180deg);
-  align-items: center;
-  justify-content: center;
-  flex-direction: row;
-  gap: 12px;
+.statement-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
 }
 
-.receipt-bank {
+.statement-card-bank {
   font-weight: 500;
 }
 
-.receipt-period,
-.receipt-count,
-.receipt-file {
+.statement-card-period,
+.statement-card-count,
+.statement-card-file {
   color: var(--text-dim);
   font-size: 12px;
 }
 
-.receipt-file {
+.statement-card-file {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: auto;
+}
+
+.statement-card-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.statement-card-actions button {
+  background: transparent;
+  border: 1px solid var(--border);
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
+.statement-card-actions button:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.statement-card-add {
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.statement-card-add:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.statement-card-add-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.screen.drag-active {
+  outline: 2px dashed var(--accent);
+  outline-offset: -8px;
+  background: var(--surface-hover);
 }
 
 .rules-dialog {

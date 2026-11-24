@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRegisterCommands } from "../commandPalette/CommandContext";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getDb } from "../../db/client";
 import {
   listStatements,
@@ -19,6 +20,8 @@ import {
   listTransactionsByIdsMatchable,
   mergeManualIntoImported,
 } from "../../db/manualTransactions";
+import { parseHalykSnapshot } from "../../parsers/halykSnapshot";
+import { importSnapshot } from "../../db/securitySnapshots";
 import { formatGoldenMismatch } from "./goldenMismatch";
 import { StatementCard } from "./StatementCard";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -37,6 +40,10 @@ function resultMessage(result: ImportResult, fileName: string): string {
   }
 }
 
+function baseName(path: string): string {
+  return path.split(/[/\\]/).pop() ?? path;
+}
+
 type PendingAction = { statement: StatementSummary; kind: "delete" | "replace"; categorizedCount: number };
 
 export function FilesScreen() {
@@ -45,6 +52,7 @@ export function FilesScreen() {
   const [report, setReport] = useState<string[] | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [mergeCandidates, setMergeCandidates] = useState<DisplayMergeCandidate[] | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const readOnly = useReadOnly();
 
   useRegisterCommands(
@@ -64,6 +72,54 @@ export function FilesScreen() {
     refresh();
   }, [refresh]);
 
+  // SPEC-2.md: перетаскивание файлов PDF-выписок и HTML-снимков прямо в
+  // окно. Tauri отдаёт настоящие пути через свой собственный drag-drop
+  // API (не HTML5 DataTransfer.files, который в webkit2gtk путей не даёт).
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    getCurrentWebview()
+      .onDragDropEvent((event) => {
+        if (event.payload.type === "enter" || event.payload.type === "over") {
+          setDragActive(true);
+        } else if (event.payload.type === "leave") {
+          setDragActive(false);
+        } else if (event.payload.type === "drop") {
+          setDragActive(false);
+          handleDroppedPaths(event.payload.paths);
+        }
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+    return () => unlisten?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readOnly]);
+
+  async function handleDroppedPaths(paths: string[]): Promise<void> {
+    if (readOnly) return;
+    const pdfPaths = paths.filter((p) => p.toLowerCase().endsWith(".pdf"));
+    const htmlPaths = paths.filter((p) => /\.html?$/i.test(p));
+    if (pdfPaths.length > 0) await importFromPaths(pdfPaths);
+    if (htmlPaths.length > 0) await importSnapshotsFromPaths(htmlPaths);
+  }
+
+  async function importSnapshotsFromPaths(paths: string[]): Promise<void> {
+    const db = await getDb();
+    const lines: string[] = [];
+    for (const path of paths) {
+      try {
+        const bytes = await invoke<number[]>("read_file_bytes", { path });
+        const html = new TextDecoder("utf-8").decode(new Uint8Array(bytes));
+        const parsed = parseHalykSnapshot(html);
+        await importSnapshot(db, parsed);
+        lines.push(`${baseName(path)}: снимок на ${parsed.snapshotDate.slice(0, 10)}, ${parsed.holdings.length} бумаг`);
+      } catch (e) {
+        lines.push(`${baseName(path)}: не удалось разобрать как снимок (${e instanceof Error ? e.message : String(e)})`);
+      }
+    }
+    setReport((prev) => [...(prev ?? []), ...lines]);
+  }
+
   async function pickAndImport(): Promise<void> {
     if (readOnly) return;
     const paths = await open({
@@ -73,7 +129,10 @@ export function FilesScreen() {
     if (!paths) return;
     const pathList = Array.isArray(paths) ? paths : [paths];
     if (pathList.length === 0) return;
+    await importFromPaths(pathList);
+  }
 
+  async function importFromPaths(pathList: string[]): Promise<void> {
     setBusy(true);
     setReport(null);
     try {
@@ -85,7 +144,7 @@ export function FilesScreen() {
         pathList.map(async (filePath) => {
           const bytes = await invoke<number[]>("read_file_bytes", { path: filePath });
           const data = new Uint8Array(bytes);
-          const fileName = filePath.split(/[/\\]/).pop() ?? filePath;
+          const fileName = baseName(filePath);
           const periodStart = await peekPeriodStart(data.slice()).catch(() => null);
           return { fileName, data, periodStart };
         }),
@@ -114,7 +173,7 @@ export function FilesScreen() {
       const refundCount = candidates.filter((c) => c.kind === "refund").length;
       if (transferCount + refundCount > 0) {
         lines.push(
-          `Найдено ${transferCount} кандидатов в переводы, ${refundCount} в возвраты — откройте «Проверить» в шапке.`,
+          `Найдено ${transferCount} кандидатов в переводы, ${refundCount} в возвраты — откройте «Проверить» на вкладке «Данные».`,
         );
       }
 
@@ -140,10 +199,10 @@ export function FilesScreen() {
         }
       }
 
-      setReport(lines);
+      setReport((prev) => [...(prev ?? []), ...lines]);
       await refresh();
     } catch (e) {
-      setReport([`Ошибка импорта: ${String(e)}`]);
+      setReport((prev) => [...(prev ?? []), `Ошибка импорта: ${String(e)}`]);
     } finally {
       setBusy(false);
     }
@@ -186,11 +245,12 @@ export function FilesScreen() {
   }
 
   return (
-    <div className="screen">
+    <div className={`screen ${dragActive ? "drag-active" : ""}`}>
       <h2>Файлы</h2>
-      <button type="button" onClick={pickAndImport} disabled={busy || readOnly}>
-        {busy ? "Работаю..." : "Импортировать выписки (PDF)"}
-      </button>
+      <p className="hint">
+        Перетащите сюда PDF-выписки (можно сразу несколько) или HTML-снимок
+        брокерского счёта Halyk — либо нажмите на пустую карточку ниже.
+      </p>
       {report && (
         <ul className="hint import-report">
           {report.map((line, i) => (
@@ -199,7 +259,7 @@ export function FilesScreen() {
         </ul>
       )}
 
-      <div className="receipt-grid">
+      <div className="statement-grid">
         {statements.map((s) => (
           <StatementCard
             key={s.id}
@@ -208,6 +268,15 @@ export function FilesScreen() {
             onReplace={readOnly ? undefined : () => askAction(s, "replace")}
           />
         ))}
+        <button
+          type="button"
+          className="statement-card statement-card-add"
+          onClick={pickAndImport}
+          disabled={busy || readOnly}
+        >
+          <span className="statement-card-add-icon">+</span>
+          <span>{busy ? "Работаю..." : "Добавить выписку"}</span>
+        </button>
       </div>
 
       {pending && (
