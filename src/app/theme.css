@@ -357,9 +357,43 @@ textarea {
   font-size: 14px;
 }
 
+/* color-scheme подсказывает webkit2gtk, что нативные виджеты (стрелка
+ * select, иконка date-picker) должны рисоваться в тёмной палитре — без
+ * этого они оставались светлыми независимо от наших background/color. */
+:root {
+  color-scheme: dark;
+}
+
+/* Без appearance: none GTK рисует select своим собственным виджетом
+ * (светлый фон, своя рамка) и наши background/color просто игнорируются —
+ * отсюда "белые квадраты" на любой теме. Рисуем свою стрелку вместо
+ * убранной системной. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) center,
+    calc(100% - 11px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+
 select option {
   background: var(--surface);
   color: var(--text);
+}
+
+/* input[type=date] — то же appearance-сопротивление плюс сама иконка
+ * календаря рисуется GTK со своим контрастом, независимо от color. Фильтр
+ * используется только чтобы иконку (обычно тёмную) было видно на тёмном
+ * фоне наших тем. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.8);
+  cursor: pointer;
 }
 
 button {
@@ -388,9 +422,60 @@ button:focus-visible {
   outline-offset: 1px;
 }
 
+/* accent-color не всегда применяется в этой сборке webkit2gtk — чекбокс
+ * оставался белым нативным квадратом независимо от темы. Рисуем чекбокс
+ * полностью сами (appearance: none + свой фон/галочка), это надёжнее. */
 input[type="checkbox"],
 input[type="radio"] {
-  accent-color: var(--accent);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+input[type="checkbox"] {
+  border-radius: 3px;
+}
+
+input[type="radio"] {
+  border-radius: 50%;
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--bg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bg);
 }
 
 .category-input {
