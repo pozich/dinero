@@ -1,11 +1,47 @@
-:root {
-  --bg: #000000;
-  --surface: #121212;
-  --surface-hover: #1c1c1c;
-  --text: #e8e8e8;
-  --text-dim: #8a8a8a;
+/* Темы (SPEC.md п.8 — AMOLED, плюс пара более спокойных вариантов, т.к.
+   чистый чёрный/белый на полный экран ощутимо устаёт глаза). Переключаются
+   через data-theme на <html>, см. src/app/theme.ts — тема хранится в
+   localStorage как предпочтение интерфейса, не как данные приложения. */
+:root,
+:root[data-theme="amoled"] {
+  --bg: #050505;
+  --surface: #141414;
+  --surface-hover: #1e1e1e;
+  --text: #e4e4e4;
+  --text-dim: #8f8f8f;
   --accent: #7dd3c0;
-  --border: #242424;
+  --border: #272727;
+  --expense: #e0806b;
+  --warning: #e0c56b;
+}
+
+:root[data-theme="dim"] {
+  /* Тёмно-серый, не угольно-чёрный — тот же принцип, что "Dim" у Twitter/
+     Discord: меньше контраста с окружением комнаты, глаза устают меньше. */
+  --bg: #1a1c1f;
+  --surface: #23262a;
+  --surface-hover: #2b2e33;
+  --text: #d8d9db;
+  --text-dim: #8d9096;
+  --accent: #7fb8a8;
+  --border: #33363b;
+  --expense: #d3826f;
+  --warning: #d1b96c;
+}
+
+:root[data-theme="slate"] {
+  /* Приглушённые синевато-серые тона — "старый, спокойный" вариант, не
+     AMOLED и не контрастный тёмный, а что-то вроде классических десктопных
+     тем. */
+  --bg: #2b2e36;
+  --surface: #353942;
+  --surface-hover: #3e424c;
+  --text: #d4d6db;
+  --text-dim: #9a9ea8;
+  --accent: #8fb3c9;
+  --border: #454a55;
+  --expense: #d08b7c;
+  --warning: #cdb87a;
 }
 
 * {
@@ -109,12 +145,12 @@ body {
 
 .banner-warning {
   background: #3a2f12;
-  color: #e0c56b;
+  color: var(--warning);
 }
 
 .banner-readonly {
   background: #3a1f1f;
-  color: #e0806b;
+  color: var(--expense);
 }
 
 .tab-bar {
@@ -285,10 +321,63 @@ tr.active-row {
   font-size: 13px;
 }
 
+/* Любой необёрнутый нативный контрол (select/date-picker/checkbox/radio)
+   иначе рисуется виджет-тулкитом окна (GTK), а не нашим CSS — цвет текста
+   у нас наследуется от body и тёмный, а фон у системного виджета остаётся
+   светлым = невидимый текст. Задаём фон/цвет/рамку явно всем контролам
+   сразу, а не только тем, что уже обёрнуты классом. */
 input,
 select,
+textarea,
 button {
   font-family: inherit;
+  color: var(--text);
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
 }
 
 .category-input {
@@ -540,7 +629,7 @@ code {
 }
 
 .rule-error {
-  color: #e0806b;
+  color: var(--expense);
 }
 
 .rule-tester {
@@ -1071,7 +1160,7 @@ tr.ignored-row {
 
 .accuracy-banner button {
   background: transparent;
-  border: 1px solid #e0c56b;
+  border: 1px solid var(--warning);
   color: inherit;
   border-radius: 4px;
   padding: 2px 8px;
@@ -1132,7 +1221,7 @@ tr.ignored-row {
 }
 
 .metric-expense {
-  color: #e0806b;
+  color: var(--expense);
 }
 
 .metric-delta {
@@ -1243,7 +1332,7 @@ tr.ignored-row {
 }
 
 .account-overview-discrepancy {
-  color: #e0c56b;
+  color: var(--warning);
   font-size: 12px;
   margin-top: 4px;
 }
@@ -1263,7 +1352,7 @@ tr.ignored-row {
 }
 
 .coverage-gap {
-  background: #e0806b;
+  background: var(--expense);
   opacity: 0.8;
 }
 
@@ -1330,7 +1419,7 @@ tr.ignored-row {
 }
 
 .recurring-up {
-  color: #e0806b;
+  color: var(--expense);
 }
 
 .recurring-down {
@@ -1338,7 +1427,7 @@ tr.ignored-row {
 }
 
 .recurring-missed {
-  color: #e0c56b;
+  color: var(--warning);
 }
 
 .recurring-actions {
@@ -1448,7 +1537,7 @@ tr.ignored-row {
 }
 
 .preset-chip-default {
-  color: #e0c56b;
+  color: var(--warning);
   font-size: 10px;
 }
 
@@ -1650,9 +1739,9 @@ tr.ignored-row {
 }
 
 .debt-overdue-badge {
-  color: #e0806b;
+  color: var(--expense);
   font-size: 11px;
-  border: 1px solid #e0806b;
+  border: 1px solid var(--expense);
   border-radius: 3px;
   padding: 1px 6px;
 }
@@ -1693,8 +1782,8 @@ tr.ignored-row {
 }
 
 .debt-status-forgiven {
-  color: #e0c56b;
-  border: 1px solid #e0c56b;
+  color: var(--warning);
+  border: 1px solid var(--warning);
 }
 
 .debt-history-actions {
@@ -1867,8 +1956,8 @@ tr.ignored-row {
 }
 
 .goal-status-overdue {
-  color: #e0806b;
-  border: 1px solid #e0806b;
+  color: var(--expense);
+  border: 1px solid var(--expense);
 }
 
 .goal-status-onTrack {
@@ -1877,8 +1966,8 @@ tr.ignored-row {
 }
 
 .goal-status-behind {
-  color: #e0806b;
-  border: 1px solid #e0806b;
+  color: var(--expense);
+  border: 1px solid var(--expense);
 }
 
 .goal-status-ahead {
@@ -1944,4 +2033,97 @@ tr.ignored-row {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+}
+
+.theme-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.theme-option.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.theme-swatch {
+  display: block;
+  width: 100px;
+  height: 56px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.theme-swatch-amoled {
+  background: linear-gradient(135deg, #050505 60%, #141414 100%);
+}
+
+.theme-swatch-dim {
+  background: linear-gradient(135deg, #1a1c1f 60%, #23262a 100%);
+}
+
+.theme-swatch-slate {
+  background: linear-gradient(135deg, #2b2e36 60%, #353942 100%);
+}
+
+.hub-subnav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.hub-subnav button {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-dim);
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.hub-subnav button:hover {
+  color: var(--text);
+  border-color: transparent;
+}
+
+.hub-subnav button.active {
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.hub-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hub-screen > .screen {
+  flex: 1;
+  overflow: auto;
+}
+
+.data-management-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }

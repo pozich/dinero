@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { TabBar, TAB_ORDER, type TabId } from "./app/TabBar";
-import { FilesScreen } from "./features/files/FilesScreen";
+import { FilesHubScreen } from "./features/files/FilesHubScreen";
 import { OperationsScreen } from "./features/operations/OperationsScreen";
-import { DataScreen } from "./features/data/DataScreen";
-import { AnalyticsScreenLazy } from "./features/analytics/AnalyticsScreenLazy";
-import { InvestmentsScreenLazy } from "./features/investments/InvestmentsScreenLazy";
+import { AnalyticsHubScreen } from "./features/analytics/AnalyticsHubScreen";
 import { ReadOnlyProvider } from "./reliability/ReadOnlyContext";
 import { LockConflictDialog } from "./reliability/LockConflictDialog";
 import { SyncConflictBanner, ReadOnlyBanner } from "./reliability/Banners";
@@ -12,15 +10,6 @@ import { installGlobalErrorLogging } from "./reliability/errorLog";
 import { backupBefore } from "./reliability/backups";
 import { installTestHooks } from "./testHooks";
 import { UndoProvider, useUndoState } from "./undo/UndoContext";
-import { ReviewScreen } from "./features/review/ReviewScreen";
-import { buildReviewCandidates } from "./review/buildReviewCandidates";
-import { DebtsScreen } from "./features/debts/DebtsScreen";
-import { listDebts, listRepayments } from "./db/debts";
-import { listPeople } from "./db/people";
-import { computeDebtBalances } from "./debts/computeDebtBalances";
-import { GoalsScreenLazy } from "./features/goals/GoalsScreenLazy";
-import { queryGoalsOverview } from "./db/goalsOverview";
-import { getDb } from "./db/client";
 import { CommandProvider, useRegisterCommands } from "./features/commandPalette/CommandContext";
 import { CommandPalette } from "./features/commandPalette/CommandPalette";
 import { HotkeyOverlay } from "./features/hotkeys/HotkeyOverlay";
@@ -87,79 +76,10 @@ function UndoControls() {
   );
 }
 
-function ReviewButton() {
-  const [count, setCount] = useState(0);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    getDb()
-      .then(buildReviewCandidates)
-      .then((c) => setCount(c.length))
-      .catch(() => {});
-  }, []);
-
-  return (
-    <>
-      <button type="button" className="review-button" onClick={() => setOpen(true)}>
-        Проверить ({count})
-      </button>
-      {open && <ReviewScreen onClose={() => setOpen(false)} onCountChange={setCount} />}
-    </>
-  );
-}
-
-function DebtsButton() {
-  const [count, setCount] = useState(0);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    getDb()
-      .then(async (db) => {
-        const [debts, repayments, people] = await Promise.all([listDebts(db), listRepayments(db), listPeople(db)]);
-        return computeDebtBalances(debts, repayments, people).filter((s) => s.remainingTiyin > 0).length;
-      })
-      .then(setCount)
-      .catch(() => {});
-  }, []);
-
-  return (
-    <>
-      <button type="button" className="review-button" onClick={() => setOpen(true)}>
-        Долги ({count})
-      </button>
-      {open && <DebtsScreen onClose={() => setOpen(false)} onCountChange={setCount} />}
-    </>
-  );
-}
-
-function GoalsButton() {
-  const [count, setCount] = useState(0);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    getDb()
-      .then((db) => queryGoalsOverview(db))
-      .then((items) => items.filter((i) => i.plan.kind !== "achieved").length)
-      .then(setCount)
-      .catch(() => {});
-  }, []);
-
-  return (
-    <>
-      <button type="button" className="review-button" onClick={() => setOpen(true)}>
-        Цели ({count})
-      </button>
-      {open && <GoalsScreenLazy onClose={() => setOpen(false)} onCountChange={setCount} />}
-    </>
-  );
-}
-
 const TAB_LABELS: Record<TabId, string> = {
   files: "Файлы",
   operations: "Категории + Операции",
-  data: "Данные",
   analytics: "Аналитика",
-  investments: "Инвестиции",
 };
 
 function AppShell() {
@@ -207,16 +127,11 @@ function AppShell() {
       <ReadOnlyBanner />
       <div className="app-header">
         <TabBar active={tab} onChange={setTab} />
-        <ReviewButton />
-        <DebtsButton />
-        <GoalsButton />
         <UndoControls />
       </div>
-      {tab === "files" && <FilesScreen />}
+      {tab === "files" && <FilesHubScreen />}
       {tab === "operations" && <OperationsScreen />}
-      {tab === "data" && <DataScreen />}
-      {tab === "analytics" && <AnalyticsScreenLazy />}
-      {tab === "investments" && <InvestmentsScreenLazy />}
+      {tab === "analytics" && <AnalyticsHubScreen />}
       <CommandPalette />
       <HotkeyOverlay />
     </div>

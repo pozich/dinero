@@ -6,6 +6,14 @@ import { listBackups, restoreBackup, type BackupMeta } from "../../reliability/b
 import { openLogsFolder } from "../../reliability/errorLog";
 import { CategoriesScreen } from "../categories/CategoriesScreen";
 import { useRegisterCommands } from "../commandPalette/CommandContext";
+import { ReviewScreen } from "../review/ReviewScreen";
+import { buildReviewCandidates } from "../../review/buildReviewCandidates";
+import { DebtsScreen } from "../debts/DebtsScreen";
+import { listDebts, listRepayments } from "../../db/debts";
+import { listPeople } from "../../db/people";
+import { computeDebtBalances } from "../../debts/computeDebtBalances";
+import { GoalsScreenLazy } from "../goals/GoalsScreenLazy";
+import { queryGoalsOverview } from "../../db/goalsOverview";
 
 type Account = {
   id: number;
@@ -49,6 +57,28 @@ export function DataScreen() {
   const [backups, setBackups] = useState<BackupMeta[]>([]);
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [showDebts, setShowDebts] = useState(false);
+  const [showGoals, setShowGoals] = useState(false);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [debtsCount, setDebtsCount] = useState(0);
+  const [goalsCount, setGoalsCount] = useState(0);
+
+  useEffect(() => {
+    getDb().then(buildReviewCandidates).then((c) => setReviewCount(c.length)).catch(() => {});
+    getDb()
+      .then(async (db) => {
+        const [debts, repayments, people] = await Promise.all([listDebts(db), listRepayments(db), listPeople(db)]);
+        return computeDebtBalances(debts, repayments, people).filter((s) => s.remainingTiyin > 0).length;
+      })
+      .then(setDebtsCount)
+      .catch(() => {});
+    getDb()
+      .then((db) => queryGoalsOverview(db))
+      .then((items) => items.filter((i) => i.plan.kind !== "achieved").length)
+      .then(setGoalsCount)
+      .catch(() => {});
+  }, []);
 
   useRegisterCommands(
     "data",
@@ -57,6 +87,9 @@ export function DataScreen() {
         { id: "data:categories", label: "Управление категориями", run: () => setShowCategories(true) },
         { id: "data:logs", label: "Открыть папку логов", run: () => openLogsFolder().catch(() => {}) },
         { id: "data:vault", label: "Изменить папку данных", run: () => changeVault() },
+        { id: "data:review", label: "Проверить переводы/возвраты", run: () => setShowReview(true) },
+        { id: "data:debts", label: "Долги", run: () => setShowDebts(true) },
+        { id: "data:goals", label: "Цели накоплений", run: () => setShowGoals(true) },
       ],
       [],
     ),
@@ -113,6 +146,24 @@ export function DataScreen() {
   return (
     <div className="screen">
       <h2>Данные</h2>
+
+      <h3>Управление</h3>
+      <p className="hint">
+        «Проверить» — предполагаемые переводы и возвраты между своими счетами,
+        ждут подтверждения. «Долги» — кому и сколько должны/кто должен вам.
+        «Цели» — накопления с прогрессом и прогнозом.
+      </p>
+      <div className="data-management-buttons">
+        <button type="button" onClick={() => setShowReview(true)}>
+          Проверить ({reviewCount})
+        </button>
+        <button type="button" onClick={() => setShowDebts(true)}>
+          Долги ({debtsCount})
+        </button>
+        <button type="button" onClick={() => setShowGoals(true)}>
+          Цели ({goalsCount})
+        </button>
+      </div>
 
       <p className="hint">
         Папка с данными: {vaultPath ?? "…"} — её можно синхронизировать между
@@ -211,6 +262,10 @@ export function DataScreen() {
           }}
         />
       )}
+
+      {showReview && <ReviewScreen onClose={() => setShowReview(false)} onCountChange={setReviewCount} />}
+      {showDebts && <DebtsScreen onClose={() => setShowDebts(false)} onCountChange={setDebtsCount} />}
+      {showGoals && <GoalsScreenLazy onClose={() => setShowGoals(false)} onCountChange={setGoalsCount} />}
     </div>
   );
 }
