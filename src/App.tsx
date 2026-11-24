@@ -3,6 +3,7 @@ import { TabBar, TAB_ORDER, type TabId } from "./app/TabBar";
 import { FilesScreen } from "./features/files/FilesScreen";
 import { OperationsScreen } from "./features/operations/OperationsScreen";
 import { DataScreen } from "./features/data/DataScreen";
+import { AnalyticsScreenLazy } from "./features/analytics/AnalyticsScreenLazy";
 import { ReadOnlyProvider } from "./reliability/ReadOnlyContext";
 import { LockConflictDialog } from "./reliability/LockConflictDialog";
 import { SyncConflictBanner, ReadOnlyBanner } from "./reliability/Banners";
@@ -104,6 +105,7 @@ const TAB_LABELS: Record<TabId, string> = {
   files: "Файлы",
   operations: "Категории + Операции",
   data: "Данные",
+  analytics: "Аналитика",
 };
 
 function AppShell() {
@@ -157,6 +159,7 @@ function AppShell() {
       {tab === "files" && <FilesScreen />}
       {tab === "operations" && <OperationsScreen />}
       {tab === "data" && <DataScreen />}
+      {tab === "analytics" && <AnalyticsScreenLazy />}
       <CommandPalette />
       <HotkeyOverlay />
     </div>

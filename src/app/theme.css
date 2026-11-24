@@ -1061,3 +1061,302 @@ tr.ignored-row {
   gap: 8px;
   margin-top: 8px;
 }
+
+.accuracy-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.accuracy-banner button {
+  background: transparent;
+  border: 1px solid #e0c56b;
+  color: inherit;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.analytics-period-bar {
+  align-items: center;
+}
+
+.analytics-period-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.analytics-period-label button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.metric-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.metric-card-wide {
+  grid-column: span 2;
+}
+
+.metric-label {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.metric-value {
+  font-size: 18px;
+  margin-top: 4px;
+}
+
+.metric-income {
+  color: var(--accent);
+}
+
+.metric-expense {
+  color: #e0806b;
+}
+
+.metric-delta {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.metric-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+}
+
+.metric-list li {
+  padding: 2px 0;
+}
+
+.metric-list button {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font-size: 13px;
+}
+
+.metric-list button:hover {
+  color: var(--accent);
+}
+
+.analytics-chart-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.chart-type-switcher {
+  display: flex;
+  gap: 2px;
+}
+
+.chart-type-switcher button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.chart-type-switcher button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.chart-type-switcher button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.chart-type-switcher button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.analytics-export {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.tree-table {
+  margin-top: 10px;
+}
+
+.tree-table-name {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.tree-table-name:hover {
+  color: var(--accent);
+}
+
+.accounts-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.account-overview-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.account-overview-head {
+  display: flex;
+  justify-content: space-between;
+}
+
+.account-overview-discrepancy {
+  color: #e0c56b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.coverage-strip {
+  display: flex;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.coverage-cell {
+  flex: 1;
+  height: 8px;
+  background: var(--accent);
+  opacity: 0.4;
+  border-radius: 2px;
+}
+
+.coverage-gap {
+  background: #e0806b;
+  opacity: 0.8;
+}
+
+.coverage-gap-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.recurring-panel {
+  margin: 16px 0;
+}
+
+.recurring-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recurring-panel-head label {
+  color: var(--text-dim);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.recurring-list {
+  list-style: none;
+  padding: 0;
+}
+
+.recurring-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.recurring-hidden {
+  opacity: 0.4;
+}
+
+.recurring-label {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+}
+
+.recurring-label:hover {
+  color: var(--accent);
+}
+
+.recurring-amount {
+  color: var(--text-dim);
+}
+
+.recurring-up {
+  color: #e0806b;
+}
+
+.recurring-down {
+  color: var(--accent);
+}
+
+.recurring-missed {
+  color: #e0c56b;
+}
+
+.recurring-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.recurring-actions button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.drilldown-dialog {
+  min-width: 600px;
+}

@@ -1,9 +1,10 @@
-export type TabId = "files" | "operations" | "data";
+export type TabId = "files" | "operations" | "data" | "analytics";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "files", label: "Файлы" },
   { id: "operations", label: "Категории + Операции" },
   { id: "data", label: "Данные" },
+  { id: "analytics", label: "Аналитика" },
 ];
 
 export function TabBar({
