@@ -561,6 +561,10 @@ input[type="radio"] {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* Без этого длинное имя файла/счёта мог раздуть .statement-card-body и
+   * вытолкнуть .statement-card-actions ниже видимой карточки — кнопки
+   * физически оказывались под соседней карточкой снизу и не нажимались. */
+  overflow: hidden;
 }
 
 .statement-card-body {
