@@ -1360,3 +1360,227 @@ tr.ignored-row {
 .drilldown-dialog {
   min-width: 600px;
 }
+
+.analytics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analytics-mode-switch {
+  display: flex;
+  gap: 2px;
+}
+
+.analytics-mode-switch button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.analytics-mode-switch button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.analytics-mode-switch button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.analytics-mode-switch button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.dashboard-toolbar button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.dashboard-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dashboard-settings {
+  margin-bottom: 10px;
+}
+
+.preset-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.preset-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 14px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preset-chip.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.preset-chip-default {
+  color: #e0c56b;
+  font-size: 10px;
+}
+
+.add-widget-menu {
+  position: relative;
+  margin-left: auto;
+}
+
+.add-widget-menu > button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.add-widget-list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  list-style: none;
+  padding: 4px;
+  margin: 2px 0 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-width: 200px;
+}
+
+.add-widget-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.add-widget-list button:hover {
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+
+.widget-frame {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.widget-frame-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.widget-frame-title {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.widget-frame-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.widget-frame-actions button {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.widget-frame-actions button:hover {
+  color: var(--accent);
+}
+
+.widget-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.widget-settings select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.widget-frame-body {
+  flex: 1;
+  overflow: auto;
+  padding: 6px;
+  min-height: 0;
+}
+
+.dashboard-mobile-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashboard-mobile-stack .widget-frame {
+  height: 320px;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: var(--accent);
+  opacity: 0.15;
+  border-radius: 6px;
+}
