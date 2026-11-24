@@ -13,6 +13,10 @@ import { installTestHooks } from "./testHooks";
 import { UndoProvider, useUndoState } from "./undo/UndoContext";
 import { ReviewScreen } from "./features/review/ReviewScreen";
 import { buildReviewCandidates } from "./review/buildReviewCandidates";
+import { DebtsScreen } from "./features/debts/DebtsScreen";
+import { listDebts, listRepayments } from "./db/debts";
+import { listPeople } from "./db/people";
+import { computeDebtBalances } from "./debts/computeDebtBalances";
 import { getDb } from "./db/client";
 import { CommandProvider, useRegisterCommands } from "./features/commandPalette/CommandContext";
 import { CommandPalette } from "./features/commandPalette/CommandPalette";
@@ -101,6 +105,30 @@ function ReviewButton() {
   );
 }
 
+function DebtsButton() {
+  const [count, setCount] = useState(0);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    getDb()
+      .then(async (db) => {
+        const [debts, repayments, people] = await Promise.all([listDebts(db), listRepayments(db), listPeople(db)]);
+        return computeDebtBalances(debts, repayments, people).filter((s) => s.remainingTiyin > 0).length;
+      })
+      .then(setCount)
+      .catch(() => {});
+  }, []);
+
+  return (
+    <>
+      <button type="button" className="review-button" onClick={() => setOpen(true)}>
+        Долги ({count})
+      </button>
+      {open && <DebtsScreen onClose={() => setOpen(false)} onCountChange={setCount} />}
+    </>
+  );
+}
+
 const TAB_LABELS: Record<TabId, string> = {
   files: "Файлы",
   operations: "Категории + Операции",
@@ -154,6 +182,7 @@ function AppShell() {
       <div className="app-header">
         <TabBar active={tab} onChange={setTab} />
         <ReviewButton />
+        <DebtsButton />
         <UndoControls />
       </div>
       {tab === "files" && <FilesScreen />}
