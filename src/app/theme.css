@@ -651,6 +651,11 @@ code {
 .manual-icon {
   color: var(--accent);
   margin-right: 4px;
+  font-size: 10px;
+}
+
+tr.ignored-row {
+  opacity: 0.45;
 }
 
 .review-list {

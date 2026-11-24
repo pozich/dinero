@@ -28,6 +28,7 @@ import { ApplyToSimilarDialog } from "./ApplyToSimilarDialog";
 import { RulesDialog } from "./RulesDialog";
 import { ApplyRulesDialog, type RuleMatch } from "./ApplyRulesDialog";
 import { ManualLinkDialog } from "./ManualLinkDialog";
+import { ManualTransactionDialog, type ManualFormResult } from "./ManualTransactionDialog";
 import { useUndoStack } from "../../undo/UndoContext";
 import { withUndo } from "../../undo/undoStack";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
@@ -37,6 +38,19 @@ import {
   unlinkTransferLink,
   listConfirmedLinksForTransaction,
 } from "../../db/transferLinks";
+import {
+  insertManualTransaction,
+  updateManualTransaction,
+  deleteManualTransaction,
+} from "../../db/manualTransactions";
+import { setTransactionNote, setTransactionIgnored } from "../../db/transactions";
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+  );
+}
 
 const COLUMNS: { key: SortColumn; label: string }[] = [
   { key: "occurred_at", label: "Дата" },
@@ -75,6 +89,7 @@ export function OperationsScreen() {
     linkId: number | null;
   } | null>(null);
   const [manualLinkFor, setManualLinkFor] = useState<TransactionListItem | null>(null);
+  const [manualDialog, setManualDialog] = useState<TransactionListItem | "new" | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const undoStack = useUndoStack();
   const readOnly = useReadOnly();
@@ -129,7 +144,8 @@ export function OperationsScreen() {
         }
         return;
       }
-      if (editingCategory || splitFor || similarPrompt) return;
+      if (editingCategory || splitFor || similarPrompt || manualDialog) return;
+      if (isTypingTarget(e.target)) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -146,12 +162,15 @@ export function OperationsScreen() {
           e.preventDefault();
           setEditingCategory(true);
         }
+      } else if (e.key.toLowerCase() === "n" && !readOnly) {
+        e.preventDefault();
+        setManualDialog("new");
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex, editingCategory, rows, splitFor, similarPrompt, readOnly]);
+  }, [activeIndex, editingCategory, rows, splitFor, similarPrompt, manualDialog, readOnly]);
 
   async function commitCategory(name: string) {
     const row = activeIndex !== null ? rows[activeIndex] : undefined;
@@ -350,6 +369,105 @@ export function OperationsScreen() {
     refresh();
   }
 
+  async function saveManual(result: ManualFormResult) {
+    const db = await getDb();
+
+    if (manualDialog === "new") {
+      const txId = await insertManualTransaction(db, {
+        accountId: result.accountId,
+        occurredAt: result.occurredAt,
+        amountTiyin: result.amountTiyin,
+        description: result.description,
+        note: result.note || null,
+      });
+      const createdEntries: { table: string; id: number }[] = [{ table: "transactions", id: txId }];
+
+      if (result.isIgnored) await setTransactionIgnored(db, txId, true);
+      if (result.categoryName) {
+        const categoryId = await findOrCreateCategory(db, result.categoryName);
+        await setTransactionCategory(db, txId, categoryId, result.amountTiyin);
+        const [split] = await db.select<{ id: number }[]>(
+          "SELECT id FROM splits WHERE transaction_id = $1",
+          [txId],
+        );
+        if (split) createdEntries.push({ table: "splits", id: split.id });
+      }
+
+      undoStack?.pushCreatedMany(`Новая операция: ${result.description}`, createdEntries);
+      setCategories(await listCategories(db));
+      setManualDialog(null);
+      refresh();
+      return;
+    }
+
+    const row = manualDialog;
+    if (!row) return;
+
+    await withUndo(
+      undoStack,
+      `Операция: ${row.description}`,
+      [
+        { table: "transactions", whereSql: "id = $1", params: [row.id] },
+        { table: "splits", whereSql: "transaction_id = $1", params: [row.id] },
+      ],
+      async () => {
+        if (row.is_manual) {
+          await updateManualTransaction(db, row.id, {
+            accountId: result.accountId,
+            occurredAt: result.occurredAt,
+            amountTiyin: result.amountTiyin,
+            description: result.description,
+            note: result.note || null,
+          });
+        } else {
+          await setTransactionNote(db, row.id, result.note || null);
+        }
+        await setTransactionIgnored(db, row.id, result.isIgnored);
+        if (result.categoryName) {
+          const categoryId = await findOrCreateCategory(db, result.categoryName);
+          await setTransactionCategory(db, row.id, categoryId, result.amountTiyin);
+        }
+      },
+    );
+    setCategories(await listCategories(db));
+    setManualDialog(null);
+    refresh();
+  }
+
+  async function deleteManualRow() {
+    if (!manualDialog || manualDialog === "new" || !manualDialog.is_manual) return;
+    const row = manualDialog;
+    const db = await getDb();
+    await withUndo(
+      undoStack,
+      `Удалить операцию: ${row.description}`,
+      [
+        { table: "transactions", whereSql: "id = $1", params: [row.id] },
+        { table: "splits", whereSql: "transaction_id = $1", params: [row.id] },
+        {
+          table: "transfer_links",
+          whereSql: "from_transaction_id = $1 OR to_transaction_id = $1",
+          params: [row.id],
+        },
+      ],
+      () => deleteManualTransaction(db, row.id),
+    );
+    setManualDialog(null);
+    refresh();
+  }
+
+  async function toggleIgnored(row: TransactionListItem) {
+    const db = await getDb();
+    await withUndo(
+      undoStack,
+      row.is_ignored ? "Учитывать" : "Не учитывать",
+      [{ table: "transactions", whereSql: "id = $1", params: [row.id] }],
+      () => setTransactionIgnored(db, row.id, !row.is_ignored),
+    );
+    setContextMenu(null);
+    refresh();
+  }
+
   const showYear = spansMultipleYears(rows.map((r) => r.occurred_at));
 
   return (
@@ -390,6 +508,15 @@ export function OperationsScreen() {
         <button type="button" onClick={openApplyRules} disabled={readOnly}>
           Применить правила
         </button>
+        <button
+          type="button"
+          className="manual-add-button"
+          title="Новая операция (N)"
+          disabled={readOnly}
+          onClick={() => setManualDialog("new")}
+        >
+          +
+        </button>
       </div>
 
       <table>
@@ -420,12 +547,24 @@ export function OperationsScreen() {
           {rows.map((row, i) => (
             <tr
               key={row.id}
-              className={i === activeIndex ? "active-row" : ""}
+              className={[
+                i === activeIndex ? "active-row" : "",
+                row.is_ignored ? "ignored-row" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               onContextMenu={(e) => openContextMenu(e, row)}
             >
               <td>{formatTransactionDate(row.occurred_at, showYear)}</td>
               <td>{formatTiyin(row.amount_tiyin)}</td>
-              <td>{row.description}</td>
+              <td>
+                {!!row.is_manual && (
+                  <span className="manual-icon" title="Ручная операция">
+                    ●
+                  </span>
+                )}
+                {row.description}
+              </td>
               <td
                 className="category-cell"
                 onClick={() => {
@@ -455,7 +594,7 @@ export function OperationsScreen() {
       <p className="hint">
         {rows.length} операций.{" "}
         <span className="keyboard-hint">
-          ↑/↓ — выбрать строку, Enter — категория, Ctrl+S — разрез.
+          ↑/↓ — выбрать строку, Enter — категория, Ctrl+S — разрез, N — новая операция.
         </span>
       </p>
 
@@ -503,6 +642,18 @@ export function OperationsScreen() {
           <button
             type="button"
             onClick={() => {
+              setManualDialog(contextMenu.row);
+              setContextMenu(null);
+            }}
+          >
+            Изменить
+          </button>
+          <button type="button" onClick={() => toggleIgnored(contextMenu.row)}>
+            {contextMenu.row.is_ignored ? "Учитывать" : "Не учитывать"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               setManualLinkFor(contextMenu.row);
               setContextMenu(null);
             }}
@@ -515,6 +666,19 @@ export function OperationsScreen() {
             </button>
           )}
         </div>
+      )}
+
+      {manualDialog && (
+        <ManualTransactionDialog
+          row={manualDialog === "new" ? undefined : manualDialog}
+          accounts={accounts}
+          categories={categories}
+          onSave={saveManual}
+          onDelete={
+            manualDialog !== "new" && manualDialog.is_manual ? deleteManualRow : undefined
+          }
+          onClose={() => setManualDialog(null)}
+        />
       )}
 
       {manualLinkFor && (
