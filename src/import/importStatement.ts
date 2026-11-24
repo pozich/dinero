@@ -10,6 +10,7 @@ import { expandKaspiDepositMirrors } from "../parsers/kaspiDeposit";
 import { expandCashMirrors } from "../parsers/cashMirror";
 import { assignDedupKeys, hashFile } from "../parsers/dedup";
 import { importInvestmentRows } from "./importInvestments";
+import { applyGoalRulesToTransactions } from "./applyGoalRules";
 import { getAccountIdByKind } from "../db/accounts";
 import { findStatementByHash, insertStatement } from "../db/statements";
 import {
@@ -167,6 +168,12 @@ export async function importStatement(
 
     const cash = await linkCashMirrors(db, statementId, main.ids, statement.transactions);
 
+    // SPEC-2.md 10.2's own example is literally "каждый перевод на Kaspi
+    // Deposit" — the deposit mirror transactions are checked too, not
+    // just the main kaspi_gold rows.
+    await applyGoalRulesToTransactions(db, "kaspi_gold", statement.transactions, main.ids);
+    await applyGoalRulesToTransactions(db, "kaspi_deposit", depositMirrors, deposit.ids);
+
     return {
       status: "imported",
       accountKind: "kaspi_gold",
@@ -215,6 +222,7 @@ export async function importStatement(
     if (statement.accountKind === "halyk_standard") {
       await importInvestmentRows(db, statement.transactions, main.ids);
     }
+    await applyGoalRulesToTransactions(db, statement.accountKind, statement.transactions, main.ids);
 
     return {
       status: "imported",
@@ -241,6 +249,7 @@ export async function importStatement(
       closingBalanceTiyin: statement.summary.closing,
     });
     const main = await insertAll(db, "eurasian", statementId, statement.transactions);
+    await applyGoalRulesToTransactions(db, "eurasian", statement.transactions, main.ids);
     return {
       status: "imported",
       accountKind: "eurasian",
@@ -265,6 +274,7 @@ export async function importStatement(
     closingBalanceTiyin: statement.summary.closing,
   });
   const main = await insertAll(db, "bcc", statementId, statement.transactions);
+  await applyGoalRulesToTransactions(db, "bcc", statement.transactions, main.ids);
   return {
     status: "imported",
     accountKind: "bcc",
