@@ -1932,3 +1932,16 @@ tr.ignored-row {
   padding: 0 0 0 10px;
   margin: 4px 0;
 }
+
+.goal-widget-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goal-widget-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}

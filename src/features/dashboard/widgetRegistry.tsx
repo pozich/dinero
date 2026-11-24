@@ -27,6 +27,8 @@ import type { WidgetConfig, WidgetLayout, WidgetType } from "../../dashboard/pre
 import type { InvestmentsOverview } from "../../db/investmentsOverview";
 import { PositionsTable } from "../investments/PositionsTable";
 import { buildCompositionOption } from "../investments/portfolioChartOptions";
+import type { GoalOverviewItem } from "../../db/goalsOverview";
+import { GoalWidgetSummary } from "../goals/GoalWidgetSummary";
 
 export type WidgetContext = {
   periodRows: LedgerRow[];
@@ -38,6 +40,7 @@ export type WidgetContext = {
   recurringSeries: RecurringSeries[];
   recurringState: Map<string, RecurringSeriesState>;
   investmentsOverview: InvestmentsOverview | null;
+  goalsOverview: GoalOverviewItem[] | null;
   onDrillDown: (title: string, transactionIds: number[]) => void;
   onSetHidden: (key: string, hidden: boolean) => void;
   onSetConfirmed: (key: string, confirmed: boolean) => void;
@@ -65,6 +68,7 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   recurringPayments: "Регулярные платежи",
   investmentPositions: "Позиции (инвестиции)",
   investmentComposition: "Состав портфеля",
+  goals: "Цели накоплений",
 };
 
 export const DEFAULT_WIDGET_LAYOUT: WidgetLayout = { x: 0, y: 0, w: 6, h: 5 };
@@ -155,5 +159,7 @@ export function renderWidget(config: WidgetConfig, ctx: WidgetContext): ReactNod
       ) : (
         <p className="hint">Нет данных по инвестициям.</p>
       );
+    case "goals":
+      return ctx.goalsOverview ? <GoalWidgetSummary items={ctx.goalsOverview} /> : <p className="hint">Нет данных по целям.</p>;
   }
 }

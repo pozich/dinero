@@ -16,6 +16,7 @@ export const WIDGET_TYPES = [
   "recurringPayments",
   "investmentPositions",
   "investmentComposition",
+  "goals",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
