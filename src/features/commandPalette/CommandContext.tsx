@@ -52,13 +52,24 @@ export function CommandProvider({ children }: { children: ReactNode }) {
 
 /** Commands passed in must have a stable identity (wrap the array in
  * useMemo at the call site) or this re-registers on every render — still
- * correct, just wasted work. */
+ * correct, just wasted work.
+ *
+ * Depend on `register`/`unregister` themselves (stable via useCallback),
+ * NOT on the `ctx` object — `ctx` is a new object every time `registry`
+ * changes, including as a direct result of THIS effect's own register()
+ * call, so depending on it is a feedback loop: register -> registry
+ * changes -> ctx changes -> effect re-runs -> register again -> forever.
+ * With two or more screens registering commands at once (e.g. the
+ * Files+Settings+Data hub) this hits React's "Maximum update depth
+ * exceeded" immediately on mount and makes the whole app unresponsive. */
 export function useRegisterCommands(groupId: string, commands: PaletteCommand[]): void {
   const ctx = useContext(CommandContext);
+  const register = ctx?.register;
+  const unregister = ctx?.unregister;
   useEffect(() => {
-    ctx?.register(groupId, commands);
-    return () => ctx?.unregister(groupId);
-  }, [ctx, groupId, commands]);
+    register?.(groupId, commands);
+    return () => unregister?.(groupId);
+  }, [register, unregister, groupId, commands]);
 }
 
 export function useAllCommands(): PaletteCommand[] {
