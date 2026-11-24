@@ -173,6 +173,12 @@ pub fn run() {
             sql: include_str!("../migrations/0009_investments.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 10,
+            description: "goals",
+            sql: include_str!("../migrations/0010_goals.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let heartbeat_vault_path = vault_path.clone();
