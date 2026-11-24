@@ -50,6 +50,8 @@ import {
   deleteManualTransaction,
 } from "../../db/manualTransactions";
 import { setTransactionNote, setTransactionIgnored } from "../../db/transactions";
+import { listPeople, type Person } from "../../db/people";
+import { MarkDebtDialog } from "../debts/MarkDebtDialog";
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -105,6 +107,8 @@ export function OperationsScreen() {
     row: TransactionListItem;
     kind: "transfer" | "refund";
   } | null>(null);
+  const [markDebtFor, setMarkDebtFor] = useState<TransactionListItem | null>(null);
+  const [people, setPeople] = useState<Person[]>([]);
   const [manualDialog, setManualDialog] = useState<TransactionListItem | "new" | null>(null);
   const [rulePrefill, setRulePrefill] = useState<{ pattern: string; categoryName: string } | null>(
     null,
@@ -148,6 +152,7 @@ export function OperationsScreen() {
     getDb().then(async (db) => {
       setAccounts(await listAccounts(db));
       setCategories(await listCategories(db));
+      setPeople(await listPeople(db));
     });
     refreshRules();
   }, [refreshRules]);
@@ -894,6 +899,15 @@ export function OperationsScreen() {
               Разорвать связь
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              setMarkDebtFor(contextMenu.row);
+              setContextMenu(null);
+            }}
+          >
+            Отметить долг…
+          </button>
           <button type="button" onClick={() => createRuleFromRow(contextMenu.row)}>
             Создать правило
           </button>
@@ -919,6 +933,18 @@ export function OperationsScreen() {
           kind={manualLinkFor.kind}
           onPick={manualConfirm}
           onClose={() => setManualLinkFor(null)}
+        />
+      )}
+
+      {markDebtFor && (
+        <MarkDebtDialog
+          row={markDebtFor}
+          people={people}
+          onClose={() => setMarkDebtFor(null)}
+          onCreated={async () => {
+            setMarkDebtFor(null);
+            setPeople(await listPeople(await getDb()));
+          }}
         />
       )}
     </div>

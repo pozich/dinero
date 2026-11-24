@@ -51,6 +51,19 @@ export async function listRepayments(db: DbClient): Promise<DebtRepayment[]> {
   return rows.map(fromRepaymentRow);
 }
 
+export type UnlinkedTransaction = { id: number; occurred_at: string; amount_tiyin: number; description: string };
+
+/** The pool findRepaymentCandidates searches over — every transaction not
+ * already the subject of a debt or a repayment, so the same transaction
+ * can't be suggested twice. */
+export function listTransactionsNotLinkedToAnyDebt(db: DbClient): Promise<UnlinkedTransaction[]> {
+  return db.select<UnlinkedTransaction[]>(
+    `SELECT t.id, t.occurred_at, t.amount_tiyin, t.description FROM transactions t
+     WHERE t.id NOT IN (SELECT transaction_id FROM debts WHERE transaction_id IS NOT NULL)
+       AND t.id NOT IN (SELECT transaction_id FROM debt_repayments WHERE transaction_id IS NOT NULL)`,
+  );
+}
+
 export type CreateDebtInput = {
   personId: number;
   direction: DebtDirection;
