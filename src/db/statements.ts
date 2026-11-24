@@ -88,7 +88,12 @@ export async function countCategorizedTransactions(
 
 /** Deletes a statement and everything that points at its transactions
  * (splits, transfer_links, the transactions themselves — fees/mirrors
- * included, since they share the same statement_id). */
+ * included, since they share the same statement_id) — plus every other
+ * table added since (debts, investments, goals) that has a FK onto
+ * transactions. Without this, deleting a statement that contains so much
+ * as one trade/dividend/goal-linked/debt-linked transaction fails on a
+ * FOREIGN KEY constraint that the caller never catches, so the delete
+ * (and "replace", which deletes first) silently does nothing. */
 export async function deleteStatement(db: DbClient, statementId: number): Promise<void> {
   const ids = await db.select<{ id: number }[]>(
     "SELECT id FROM transactions WHERE statement_id = $1",
@@ -108,6 +113,28 @@ export async function deleteStatement(db: DbClient, statementId: number): Promis
     await db.execute(
       `DELETE FROM transfer_links WHERE from_transaction_id IN (${fromPlaceholders}) OR to_transaction_id IN (${toPlaceholders})`,
       [...params, ...params],
+    );
+
+    // goal_links/trades/dividends have no meaning without their
+    // transaction (NOT NULL FK, and goal_links is just a tag on one) — drop
+    // them. debts/debt_repayments/goal_contributions store their own
+    // amount/date and already support transaction_id = NULL for manual
+    // entries, so unlink rather than delete those.
+    await db.execute(`DELETE FROM goal_links WHERE transaction_id IN (${placeholders})`, params);
+    await db.execute(`DELETE FROM trades WHERE transaction_id IN (${placeholders})`, params);
+    await db.execute(`DELETE FROM dividends WHERE transaction_id IN (${placeholders})`, params);
+    await db.execute(`UPDATE debts SET transaction_id = NULL WHERE transaction_id IN (${placeholders})`, params);
+    await db.execute(
+      `UPDATE debt_repayments SET transaction_id = NULL WHERE transaction_id IN (${placeholders})`,
+      params,
+    );
+    await db.execute(
+      `UPDATE goal_contributions SET transaction_id = NULL WHERE transaction_id IN (${placeholders})`,
+      params,
+    );
+    await db.execute(
+      `UPDATE transactions SET related_transaction_id = NULL WHERE related_transaction_id IN (${placeholders})`,
+      params,
     );
   }
   await db.execute("DELETE FROM transactions WHERE statement_id = $1", [statementId]);

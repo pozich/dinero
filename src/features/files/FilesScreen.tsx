@@ -239,6 +239,11 @@ export function FilesScreen() {
       } else {
         setReport([`${statement.file_name}: удалено`]);
       }
+    } catch (e) {
+      // Without this, a failed delete (e.g. a FK error) silently did
+      // nothing — the dialog was already closed and nothing told the
+      // user it hadn't worked.
+      setReport([`${statement.file_name}: не удалось удалить (${e instanceof Error ? e.message : String(e)})`]);
     } finally {
       setBusy(false);
     }
