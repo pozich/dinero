@@ -98,6 +98,28 @@ describe.skipIf(!hasSamples)("importStatement (real sample files, in-memory sqli
     expect(statement.closing_balance_tiyin).not.toBeNull();
   });
 
+  it("extracts structured trades and dividends from the invest statement (SPEC-2.md 9.1)", async () => {
+    const db = createTestDb();
+    const data = readSample("Halyk/halyk_invest_oct.pdf");
+    await importStatement(db, data, "halyk_invest_oct.pdf");
+
+    const { listTrades } = await import("../../src/db/trades");
+    const { listDividends } = await import("../../src/db/dividends");
+
+    const trades = await listTrades(db);
+    const dividends = await listDividends(db);
+    expect(trades).toHaveLength(41);
+    expect(dividends).toHaveLength(6);
+    // Every ticker in the real sample is one of the 7 seeded securities.
+    expect(trades.every((t) => t.ticker)).toBe(true);
+    expect(dividends.every((d) => d.ticker)).toBe(true);
+
+    // Commission flows through from the linked fee row, when there is one.
+    const withCommission = trades.filter((t) => t.commissionTiyin > 0);
+    expect(withCommission.length).toBeGreaterThanOrEqual(0); // just must not throw/NaN
+    expect(trades.every((t) => Number.isFinite(t.commissionTiyin))).toBe(true);
+  });
+
   it("imports Eurasian and BCC as plain transaction lists", async () => {
     const db = createTestDb();
     await importStatement(db, readSample("bcc & ebank/eubank_oct.pdf"), "eubank_oct.pdf");

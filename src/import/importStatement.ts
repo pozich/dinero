@@ -9,6 +9,7 @@ import { checkGolden, type GoldenResult } from "../parsers/goldenCheck";
 import { expandKaspiDepositMirrors } from "../parsers/kaspiDeposit";
 import { expandCashMirrors } from "../parsers/cashMirror";
 import { assignDedupKeys, hashFile } from "../parsers/dedup";
+import { importInvestmentRows } from "./importInvestments";
 import { getAccountIdByKind } from "../db/accounts";
 import { findStatementByHash, insertStatement } from "../db/statements";
 import {
@@ -210,6 +211,10 @@ export async function importStatement(
     }
 
     const cash = await linkCashMirrors(db, statementId, main.ids, statement.transactions);
+
+    if (statement.accountKind === "halyk_standard") {
+      await importInvestmentRows(db, statement.transactions, main.ids);
+    }
 
     return {
       status: "imported",
