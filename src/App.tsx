@@ -4,6 +4,7 @@ import { FilesScreen } from "./features/files/FilesScreen";
 import { OperationsScreen } from "./features/operations/OperationsScreen";
 import { DataScreen } from "./features/data/DataScreen";
 import { AnalyticsScreenLazy } from "./features/analytics/AnalyticsScreenLazy";
+import { InvestmentsScreenLazy } from "./features/investments/InvestmentsScreenLazy";
 import { ReadOnlyProvider } from "./reliability/ReadOnlyContext";
 import { LockConflictDialog } from "./reliability/LockConflictDialog";
 import { SyncConflictBanner, ReadOnlyBanner } from "./reliability/Banners";
@@ -134,6 +135,7 @@ const TAB_LABELS: Record<TabId, string> = {
   operations: "Категории + Операции",
   data: "Данные",
   analytics: "Аналитика",
+  investments: "Инвестиции",
 };
 
 function AppShell() {
@@ -189,6 +191,7 @@ function AppShell() {
       {tab === "operations" && <OperationsScreen />}
       {tab === "data" && <DataScreen />}
       {tab === "analytics" && <AnalyticsScreenLazy />}
+      {tab === "investments" && <InvestmentsScreenLazy />}
       <CommandPalette />
       <HotkeyOverlay />
     </div>

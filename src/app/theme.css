@@ -1741,3 +1741,69 @@ tr.ignored-row {
   cursor: pointer;
   font-size: 12px;
 }
+
+.investments-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-prices,
+.upload-snapshot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.investments-toolbar button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.investments-toolbar button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.positions-table tr {
+  cursor: pointer;
+}
+
+.played-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.played-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.played-card h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.played-card p {
+  margin: 4px 0;
+}
+
+.portfolio-overview h4 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.dividends-calendar table {
+  margin-top: 12px;
+}
