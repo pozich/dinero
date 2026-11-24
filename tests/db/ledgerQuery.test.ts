@@ -85,6 +85,46 @@ describe("queryLedger", () => {
     expect(inRow).toMatchObject({ excluded: true, reason: "transit" });
   });
 
+  it("excludes a debt's own transaction and its repayment", async () => {
+    const db = createTestDb();
+    const kaspiId = await getAccountIdByKind(db, "kaspi_gold");
+
+    const personResult = await db.execute("INSERT INTO people (name) VALUES ($1)", ["Роман"]);
+    const personId = personResult.lastInsertId!;
+
+    const lentId = await insertTransaction(db, {
+      accountId: kaspiId,
+      statementId: null,
+      occurredAt: "2026-01-01T00:00:00.000Z",
+      amountTiyin: -500000,
+      description: "Роман П.",
+      rawType: null,
+      dedupKey: "d1",
+    });
+    const repaymentId = await insertTransaction(db, {
+      accountId: kaspiId,
+      statementId: null,
+      occurredAt: "2026-01-10T00:00:00.000Z",
+      amountTiyin: 500000,
+      description: "Роман П.",
+      rawType: null,
+      dedupKey: "d2",
+    });
+
+    const debtResult = await db.execute(
+      "INSERT INTO debts (person_id, direction, transaction_id, amount_tiyin, occurred_at) VALUES ($1, 'lent', $2, 500000, $3)",
+      [personId, lentId, "2026-01-01T00:00:00.000Z"],
+    );
+    await db.execute(
+      "INSERT INTO debt_repayments (debt_id, transaction_id, amount_tiyin, occurred_at) VALUES ($1, $2, 500000, $3)",
+      [debtResult.lastInsertId, repaymentId, "2026-01-10T00:00:00.000Z"],
+    );
+
+    const rows = await queryLedger(db);
+    expect(rows.find((r) => r.transactionId === lentId)).toMatchObject({ excluded: true, reason: "debt" });
+    expect(rows.find((r) => r.transactionId === repaymentId)).toMatchObject({ excluded: true, reason: "debt" });
+  });
+
   it("still counts an uncategorized transaction (no splits at all) toward the total, as «без категории»", async () => {
     const db = createTestDb();
     const kaspiId = await getAccountIdByKind(db, "kaspi_gold");

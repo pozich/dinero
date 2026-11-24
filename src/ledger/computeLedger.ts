@@ -28,7 +28,7 @@ export type LedgerLink = {
   toTransactionId: number;
 };
 
-export type ExclusionReason = "transit" | "ignored" | "transfer" | "refund" | "investment";
+export type ExclusionReason = "transit" | "ignored" | "transfer" | "refund" | "investment" | "debt";
 
 export type LedgerEntry = {
   splitId: number;
@@ -58,14 +58,22 @@ export type LedgerEntry = {
  * (dividends) — counted, and reported back with that flag set so
  * analytics can show/hide it on its own toggle.
  *
- * Debts and savings-goal links aren't modelled yet (no such tables exist
- * until Ф7/Ф9) — nothing here excludes them, by design, not by oversight.
+ * Debts (SPEC-2.md 8) exclude their own transaction entirely — "Долги не
+ * являются доходом/расходом" — whether that's the original lending/
+ * borrowing transaction or one of its repayments; `debtTransactionIds` is
+ * the union of both, computed by the caller (`src/db/ledgerQuery.ts`) from
+ * the `debts`/`debt_repayments` tables. A debt tracked purely in cash (no
+ * `transaction_id`) never reaches this set at all, since there's no real
+ * transaction to exclude. Savings-goal links aren't modelled yet (no such
+ * table exists until Ф9) — nothing here excludes them, by design, not by
+ * oversight.
  */
 export function computeLedger(
   transactions: readonly LedgerTransaction[],
   splits: readonly LedgerSplit[],
   links: readonly LedgerLink[],
   categories: readonly Category[],
+  debtTransactionIds: ReadonlySet<number> = new Set(),
 ): LedgerEntry[] {
   const txById = new Map(transactions.map((t) => [t.id, t]));
 
@@ -116,6 +124,9 @@ export function computeLedger(
     }
     if (refundExcludedIds.has(tx.id)) {
       return { ...base, amountTiyin: 0, excluded: true, reason: "refund" };
+    }
+    if (debtTransactionIds.has(tx.id)) {
+      return { ...base, amountTiyin: 0, excluded: true, reason: "debt" };
     }
 
     const isInvestment = isInvestmentCategory(split.categoryId, categories);

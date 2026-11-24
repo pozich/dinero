@@ -121,4 +121,31 @@ describe("computeLedger", () => {
     );
     expect(entries[0]).toMatchObject({ excluded: false, amountTiyin: 5000, isInvestmentIncome: true });
   });
+
+  it("excludes a debt's own transaction, and its repayments, from income/expense (Ф7's done-criterion)", () => {
+    // Выдача 5000 -> возврат 2000 -> возврат 3000: none of the three count.
+    const transactions = [
+      tx({ id: 1, amountTiyin: -500000 }), // lent
+      tx({ id: 2, amountTiyin: 200000 }), // repayment 1
+      tx({ id: 3, amountTiyin: 300000 }), // repayment 2
+    ];
+    const splits = [
+      split({ id: 1, transactionId: 1, amountTiyin: -500000 }),
+      split({ id: 2, transactionId: 2, amountTiyin: 200000 }),
+      split({ id: 3, transactionId: 3, amountTiyin: 300000 }),
+    ];
+    const debtTransactionIds = new Set([1, 2, 3]);
+
+    const entries = computeLedger(transactions, splits, [], [FOOD_CATEGORY], debtTransactionIds);
+    expect(entries).toEqual([
+      { splitId: 1, transactionId: 1, categoryId: 10, amountTiyin: 0, isInvestmentIncome: false, excluded: true, reason: "debt" },
+      { splitId: 2, transactionId: 2, categoryId: 10, amountTiyin: 0, isInvestmentIncome: false, excluded: true, reason: "debt" },
+      { splitId: 3, transactionId: 3, categoryId: 10, amountTiyin: 0, isInvestmentIncome: false, excluded: true, reason: "debt" },
+    ]);
+  });
+
+  it("doesn't exclude an ordinary transaction just because some other transaction is a debt", () => {
+    const entries = computeLedger([tx({ id: 1 })], [split({ transactionId: 1 })], [], [FOOD_CATEGORY], new Set([999]));
+    expect(entries[0]).toMatchObject({ excluded: false });
+  });
 });

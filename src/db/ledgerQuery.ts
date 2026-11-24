@@ -87,6 +87,18 @@ export async function queryLedger(db: DbClient, filters: LedgerFilters = {}): Pr
     { kind: "transfer" | "refund"; from_transaction_id: number; to_transaction_id: number }[]
   >(`SELECT kind, from_transaction_id, to_transaction_id FROM transfer_links WHERE status = 'confirmed'`);
 
+  // SPEC-2.md 8: a debt's own transaction, and every one of its
+  // repayments, are excluded the same way a transfer is — neither is
+  // income/expense. A debt tracked purely in cash has no transaction_id
+  // and never reaches this set, which is correct: there's nothing to
+  // exclude.
+  const debtTransactions = await db.select<{ transaction_id: number | null }[]>(
+    `SELECT transaction_id FROM debts WHERE transaction_id IS NOT NULL
+     UNION ALL
+     SELECT transaction_id FROM debt_repayments WHERE transaction_id IS NOT NULL`,
+  );
+  const debtTransactionIds = new Set(debtTransactions.map((d) => d.transaction_id!));
+
   const categories = await listCategories(db);
 
   const txById = new Map(rawTx.map((t) => [t.id, t]));
@@ -113,7 +125,7 @@ export async function queryLedger(db: DbClient, filters: LedgerFilters = {}): Pr
     toTransactionId: l.to_transaction_id,
   }));
 
-  const entries = computeLedger(transactions, splits, links, categories);
+  const entries = computeLedger(transactions, splits, links, categories, debtTransactionIds);
 
   const rows: LedgerRow[] = entries
     .map((e) => {
