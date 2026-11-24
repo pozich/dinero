@@ -118,8 +118,8 @@ export async function updateManualTransaction(
 export async function deleteManualTransaction(db: DbClient, transactionId: number): Promise<void> {
   await requireManual(db, transactionId);
   await db.execute(
-    "DELETE FROM transfer_links WHERE from_transaction_id = $1 OR to_transaction_id = $1",
-    [transactionId],
+    "DELETE FROM transfer_links WHERE from_transaction_id = $1 OR to_transaction_id = $2",
+    [transactionId, transactionId],
   );
   await db.execute("DELETE FROM splits WHERE transaction_id = $1", [transactionId]);
   await db.execute("DELETE FROM transactions WHERE id = $1", [transactionId]);
@@ -158,8 +158,8 @@ export async function mergeManualIntoImported(
   }
 
   await db.execute(
-    "DELETE FROM transfer_links WHERE from_transaction_id = $1 OR to_transaction_id = $1",
-    [manualId],
+    "DELETE FROM transfer_links WHERE from_transaction_id = $1 OR to_transaction_id = $2",
+    [manualId, manualId],
   );
   await db.execute("DELETE FROM splits WHERE transaction_id = $1", [manualId]);
   await db.execute("DELETE FROM transactions WHERE id = $1", [manualId]);

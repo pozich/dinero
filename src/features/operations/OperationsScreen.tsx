@@ -540,8 +540,8 @@ export function OperationsScreen() {
         { table: "splits", whereSql: "transaction_id = $1", params: [row.id] },
         {
           table: "transfer_links",
-          whereSql: "from_transaction_id = $1 OR to_transaction_id = $1",
-          params: [row.id],
+          whereSql: "from_transaction_id = $1 OR to_transaction_id = $2",
+          params: [row.id, row.id],
         },
       ],
       () => deleteManualTransaction(db, row.id),

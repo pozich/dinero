@@ -41,10 +41,14 @@ export function listConfirmedLinksForTransaction(
   db: DbClient,
   transactionId: number,
 ): Promise<TransferLink[]> {
+  // Two independent placeholders, not one reused — sqlx binds each `$N`
+  // occurrence positionally, not by index, so reusing $1 twice needs two
+  // values, not one (see the same fix elsewhere: transactionsQuery.ts,
+  // statements.ts's deleteStatement).
   return db.select<TransferLink[]>(
     `SELECT * FROM transfer_links
-     WHERE status = 'confirmed' AND (from_transaction_id = $1 OR to_transaction_id = $1)`,
-    [transactionId],
+     WHERE status = 'confirmed' AND (from_transaction_id = $1 OR to_transaction_id = $2)`,
+    [transactionId, transactionId],
   );
 }
 
