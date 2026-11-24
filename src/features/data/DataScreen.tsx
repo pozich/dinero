@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getDb } from "../../db/client";
 import { listBackups, restoreBackup, type BackupMeta } from "../../reliability/backups";
 import { openLogsFolder } from "../../reliability/errorLog";
+import { CategoriesScreen } from "../categories/CategoriesScreen";
 
 type Account = {
   id: number;
@@ -46,23 +47,27 @@ export function DataScreen() {
   const [error, setError] = useState<string | null>(null);
   const [backups, setBackups] = useState<BackupMeta[]>([]);
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [showCategories, setShowCategories] = useState(false);
 
   const refreshBackups = useCallback(() => {
     listBackups().then(setBackups).catch(() => {});
+  }, []);
+
+  const refreshCategories = useCallback(async () => {
+    const db = await getDb();
+    setCategories(await db.select<Category[]>("SELECT * FROM categories ORDER BY id"));
   }, []);
 
   useEffect(() => {
     getDb()
       .then(async (db) => {
         setAccounts(await db.select<Account[]>("SELECT * FROM accounts ORDER BY id"));
-        setCategories(
-          await db.select<Category[]>("SELECT * FROM categories ORDER BY id"),
-        );
       })
       .catch((e) => setError(String(e)));
+    refreshCategories();
     invoke<string>("get_db_url").then((url) => setVaultPath(vaultFolderFromDbUrl(url)));
     refreshBackups();
-  }, [refreshBackups]);
+  }, [refreshBackups, refreshCategories]);
 
   async function handleRestore(backup: BackupMeta) {
     const ok = window.confirm(
@@ -164,6 +169,10 @@ export function DataScreen() {
           ))}
         </tbody>
       </table>
+      <h3>Категории</h3>
+      <button type="button" onClick={() => setShowCategories(true)}>
+        Управление категориями...
+      </button>
       <table>
         <thead>
           <tr>
@@ -180,6 +189,15 @@ export function DataScreen() {
           ))}
         </tbody>
       </table>
+
+      {showCategories && (
+        <CategoriesScreen
+          onClose={() => {
+            setShowCategories(false);
+            refreshCategories();
+          }}
+        />
+      )}
     </div>
   );
 }

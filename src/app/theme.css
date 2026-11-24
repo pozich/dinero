@@ -580,6 +580,72 @@ code {
   min-width: 420px;
 }
 
+.categories-screen {
+  min-width: 480px;
+}
+
+.category-root-drop {
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.category-tree {
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.category-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: grab;
+}
+
+.category-row:hover {
+  background: var(--surface-hover);
+}
+
+.category-row-name {
+  flex: 1;
+}
+
+.category-row-actions button {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.category-row-actions button:hover {
+  color: var(--accent);
+}
+
+.category-action-form {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.category-action-form select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
 .manual-form {
   display: flex;
   flex-direction: column;
