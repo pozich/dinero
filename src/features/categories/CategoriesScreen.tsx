@@ -14,28 +14,7 @@ import { useUndoStack } from "../../undo/UndoContext";
 import { withUndo } from "../../undo/undoStack";
 import { backupBefore } from "../../reliability/backups";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
-
-type TreeNode = Category & { children: TreeNode[] };
-
-function buildTree(categories: Category[]): TreeNode[] {
-  const byId = new Map<number, TreeNode>(categories.map((c) => [c.id, { ...c, children: [] }]));
-  const roots: TreeNode[] = [];
-  for (const node of byId.values()) {
-    const parent = node.parent_id !== null ? byId.get(node.parent_id) : undefined;
-    if (parent) parent.children.push(node);
-    else roots.push(node);
-  }
-  const sortRec = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => a.name.localeCompare(b.name));
-    nodes.forEach((n) => sortRec(n.children));
-  };
-  sortRec(roots);
-  return roots;
-}
-
-function flatten(nodes: TreeNode[]): Category[] {
-  return nodes.flatMap((n) => [n as Category, ...flatten(n.children)]);
-}
+import { buildCategoryTree, flattenCategoryTree, type TreeNode } from "./buildCategoryTree";
 
 type Action = { category: Category; kind: "merge" | "delete" };
 
@@ -60,7 +39,7 @@ export function CategoriesScreen({ onClose }: { onClose: () => void }) {
     refresh();
   }, []);
 
-  const tree = buildTree(categories);
+  const tree = buildCategoryTree(categories);
   const CATEGORY_TABLE_SPEC = [{ table: "categories", whereSql: "1=1", params: [] }];
 
   async function commitRename(id: number) {
@@ -171,7 +150,7 @@ export function CategoriesScreen({ onClose }: { onClose: () => void }) {
     );
   }
 
-  const allFlat = flatten(tree);
+  const allFlat = flattenCategoryTree(tree);
 
   return (
     <div className="modal-backdrop">

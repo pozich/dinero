@@ -274,6 +274,8 @@ export function OperationsTable({
                   onActiveIndexChange(virtualRow.index);
                 }}
                 onContextMenu={(e) => onContextMenu(e, row)}
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData("text/plain", String(row.id))}
                 onTouchStart={(e) => handleTouchStart(e, row)}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}

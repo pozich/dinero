@@ -181,6 +181,11 @@ body {
     display: none;
   }
 
+  .category-sidebar,
+  .sidebar-collapsed {
+    display: none;
+  }
+
   button,
   input,
   select {
@@ -870,6 +875,68 @@ tr.ignored-row {
   background: rgba(125, 211, 192, 0.1);
   pointer-events: none;
   z-index: 100;
+}
+
+.operations-layout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.operations-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.category-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.category-sidebar-head {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.category-sidebar-head input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.category-sidebar-tree {
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.sidebar-category {
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+  cursor: default;
+}
+
+.sidebar-category.drag-over {
+  background: var(--surface-hover);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.sidebar-collapsed {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  align-self: flex-start;
 }
 
 .bulk-action-bar {

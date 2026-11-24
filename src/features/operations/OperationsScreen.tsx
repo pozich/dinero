@@ -30,6 +30,7 @@ import { ManualLinkDialog } from "./ManualLinkDialog";
 import { ManualTransactionDialog, type ManualFormResult } from "./ManualTransactionDialog";
 import { OperationsTable } from "./OperationsTable";
 import { BulkActionBar } from "./BulkActionBar";
+import { CategorySidebar } from "./CategorySidebar";
 import { selectAll } from "./selection";
 import { DEFAULT_COLUMNS, mergeWithDefaults, reorderColumns, toggleColumnVisibility, type ColumnConfig } from "./tableColumns";
 import { useUndoStack } from "../../undo/UndoContext";
@@ -126,9 +127,19 @@ export function OperationsScreen() {
     [search, accountId, onlyUncategorized, periodStart, periodEnd],
   );
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("dinero.categorySidebarCollapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [sidebarRefreshToken, setSidebarRefreshToken] = useState(0);
+
   const refresh = useCallback(async () => {
     const db = await getDb();
     setRows(await queryTransactions(db, filters, sort));
+    setSidebarRefreshToken((t) => t + 1);
   }, [filters, sort]);
 
   useEffect(() => {
@@ -150,6 +161,14 @@ export function OperationsScreen() {
       // per-viewer convenience only — fine to lose on a private window etc.
     }
   }, [columns]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("dinero.categorySidebarCollapsed", sidebarCollapsed ? "1" : "0");
+    } catch {
+      // same as above — per-viewer convenience only
+    }
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (activeIndex !== null && activeIndex >= rows.length) {
@@ -600,12 +619,49 @@ export function OperationsScreen() {
     refresh();
   }
 
+  // SPEC-2.md Ф4: "перетащить операции на категорию = проставить" — if the
+  // dragged row is part of the current multi-selection, the whole
+  // selection moves with it; otherwise just that one row.
+  async function handleSidebarAssign(categoryName: string, draggedId: number) {
+    if (readOnly) return;
+    const ids = selectedIds.has(draggedId) ? [...selectedIds] : [draggedId];
+    const targetRows = rows.filter((r) => ids.includes(r.id));
+    if (targetRows.length === 0) return;
+    if (targetRows.length > 1) await backupBefore("bulk_action");
+
+    const db = await getDb();
+    const categoryId = await findOrCreateCategory(db, categoryName);
+    const specs = targetRows.map((r) => ({
+      table: "splits",
+      whereSql: "transaction_id = $1",
+      params: [r.id],
+    }));
+    await withUndo(
+      undoStack,
+      `Категория «${categoryName}» (перетаскивание, ${targetRows.length})`,
+      specs,
+      async () => {
+        for (const r of targetRows) await setTransactionCategory(db, r.id, categoryId, r.amount_tiyin);
+      },
+    );
+    setCategories(await listCategories(db));
+    refresh();
+  }
+
   const showYear = spansMultipleYears(rows.map((r) => r.occurred_at));
 
   return (
     <div className="screen operations-screen" ref={containerRef}>
       <h2>Категории + Операции</h2>
 
+      <div className="operations-layout">
+        <CategorySidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
+          onAssign={handleSidebarAssign}
+          refreshToken={sidebarRefreshToken}
+        />
+        <div className="operations-main">
       <div className="filters">
         <input
           placeholder="Поиск по описанию..."
@@ -718,6 +774,8 @@ export function OperationsScreen() {
           операция, Ctrl+A — выбрать все, Shift/Ctrl+клик — выделение, рамка мышью.
         </span>
       </p>
+        </div>
+      </div>
 
       {splitFor && (
         <SplitDialog
