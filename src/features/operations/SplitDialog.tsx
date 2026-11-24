@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Category } from "../../db/categories";
 import type { SplitInput } from "../../db/transactions";
 import { formatTiyin, parseTiyinInput } from "./money";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 type Row = { categoryName: string; amountText: string };
 
@@ -18,6 +19,7 @@ export function SplitDialog({
   onSave: (splits: SplitInput[]) => void;
   onClose: () => void;
 }) {
+  useBackButtonClose(onClose);
   const [rows, setRows] = useState<Row[]>([
     { categoryName: "", amountText: (transactionAmountTiyin / 100).toFixed(2) },
   ]);

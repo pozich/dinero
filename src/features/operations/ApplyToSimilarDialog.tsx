@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { TransactionListItem } from "../../db/transactionsQuery";
 import { formatTiyin } from "./money";
 import { formatTransactionDate, spansMultipleYears } from "./dateFormat";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 export function ApplyToSimilarDialog({
   categoryName,
@@ -16,6 +17,7 @@ export function ApplyToSimilarDialog({
   onClose: () => void;
   onCreateRule?: () => void;
 }) {
+  useBackButtonClose(onClose);
   const [checked, setChecked] = useState<Set<number>>(new Set(candidates.map((c) => c.id)));
   const showYear = spansMultipleYears(candidates.map((c) => c.occurred_at));
 

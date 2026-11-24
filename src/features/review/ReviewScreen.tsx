@@ -6,6 +6,7 @@ import { formatTransactionDate } from "../operations/dateFormat";
 import { formatTiyin } from "../operations/money";
 import { useUndoStack } from "../../undo/UndoContext";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 const KIND_LABEL: Record<ReviewCandidate["kind"], string> = {
   transfer: "Перевод между счетами",
@@ -24,6 +25,7 @@ function Card({ t }: { t: ReviewCandidate["from"] }) {
 }
 
 export function ReviewScreen({ onClose, onCountChange }: { onClose: () => void; onCountChange: (n: number) => void }) {
+  useBackButtonClose(onClose);
   const [candidates, setCandidates] = useState<ReviewCandidate[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);

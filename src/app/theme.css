@@ -617,6 +617,57 @@ code {
   min-width: 420px;
 }
 
+.command-palette {
+  min-width: 480px;
+}
+
+.command-palette input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 15px;
+}
+
+.command-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.command-list li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.command-list li.active button,
+.command-list li button:hover {
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+
+.hotkey-overlay {
+  min-width: 420px;
+}
+
+.hotkey-overlay h4 {
+  margin: 14px 0 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 .categories-screen {
   min-width: 480px;
 }

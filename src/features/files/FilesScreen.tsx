@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRegisterCommands } from "../commandPalette/CommandContext";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { getDb } from "../../db/client";
@@ -45,6 +46,14 @@ export function FilesScreen() {
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [mergeCandidates, setMergeCandidates] = useState<DisplayMergeCandidate[] | null>(null);
   const readOnly = useReadOnly();
+
+  useRegisterCommands(
+    "files",
+    useMemo(
+      () => [{ id: "files:import", label: "Импортировать выписки", run: () => pickAndImport() }],
+      [],
+    ),
+  );
 
   const refresh = useCallback(async () => {
     const db = await getDb();

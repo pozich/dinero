@@ -4,6 +4,7 @@ import type { Category } from "../../db/categories";
 import type { Account } from "../../db/accounts";
 import { testPattern } from "./categoryRuleMatch";
 import { parseTiyinInput, formatTiyin } from "./money";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 const CHEAT_SHEET = [
   [".", "любой символ"],
@@ -54,6 +55,7 @@ export function RulesDialog({
   onMove: (id: number, direction: "up" | "down") => void;
   onClose: () => void;
 }) {
+  useBackButtonClose(onClose);
   const [pattern, setPattern] = useState(initialPattern ?? "");
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [categoryName, setCategoryName] = useState(initialCategoryName ?? "");

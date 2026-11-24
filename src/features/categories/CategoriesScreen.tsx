@@ -15,10 +15,12 @@ import { withUndo } from "../../undo/undoStack";
 import { backupBefore } from "../../reliability/backups";
 import { useReadOnly } from "../../reliability/ReadOnlyContext";
 import { buildCategoryTree, flattenCategoryTree, type TreeNode } from "./buildCategoryTree";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 type Action = { category: Category; kind: "merge" | "delete" };
 
 export function CategoriesScreen({ onClose }: { onClose: () => void }) {
+  useBackButtonClose(onClose);
   const [categories, setCategories] = useState<Category[]>([]);
   const [counts, setCounts] = useState<Map<number, CategoryCount>>(new Map());
   const [renamingId, setRenamingId] = useState<number | null>(null);

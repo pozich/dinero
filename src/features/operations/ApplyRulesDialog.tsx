@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { TransactionListItem } from "../../db/transactionsQuery";
 import { formatTiyin } from "./money";
 import { formatTransactionDate, spansMultipleYears } from "./dateFormat";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 export type RuleMatch = {
   transaction: TransactionListItem;
@@ -18,6 +19,7 @@ export function ApplyRulesDialog({
   onApply: (transactionIds: number[]) => void;
   onClose: () => void;
 }) {
+  useBackButtonClose(onClose);
   const [checked, setChecked] = useState<Set<number>>(
     new Set(matches.map((m) => m.transaction.id)),
   );

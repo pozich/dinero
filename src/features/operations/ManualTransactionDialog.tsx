@@ -3,6 +3,7 @@ import type { Account } from "../../db/accounts";
 import type { Category } from "../../db/categories";
 import type { TransactionListItem } from "../../db/transactionsQuery";
 import { parseTiyinInput } from "./money";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 export type ManualFormResult = {
   accountId: number;
@@ -39,6 +40,7 @@ export function ManualTransactionDialog({
   onDelete?: () => void;
   onClose: () => void;
 }) {
+  useBackButtonClose(onClose);
   const isEditing = !!row;
   const fieldsLocked = isEditing && !row!.is_manual;
 

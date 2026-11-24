@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useRegisterCommands } from "../commandPalette/CommandContext";
+import { formatTiyin } from "./money";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { getDb } from "../../db/client";
@@ -647,6 +649,28 @@ export function OperationsScreen() {
     setCategories(await listCategories(db));
     refresh();
   }
+
+  const paletteCommands = useMemo(() => {
+    const actions = [
+      { id: "op:new", label: "Новая операция", run: () => setManualDialog("new") },
+      { id: "op:apply-rules", label: "Применить правила", run: () => openApplyRules() },
+      { id: "op:rules", label: "Правила авто-категоризации", run: () => setShowRules(true) },
+      { id: "op:export", label: "Экспорт CSV", run: () => exportCsv() },
+    ];
+    // Capped — the palette's own search already shows at most 20, this just
+    // avoids building commands for a huge filtered-out set on every render.
+    const operations = rows.slice(0, 500).map((r) => ({
+      id: `op:tx:${r.id}`,
+      label: `Операция: ${r.description} · ${formatTiyin(r.amount_tiyin)}`,
+      run: () => {
+        const index = rows.findIndex((row) => row.id === r.id);
+        if (index !== -1) setActiveIndex(index);
+        setSelectedIds(new Set([r.id]));
+      },
+    }));
+    return [...actions, ...operations];
+  }, [rows]);
+  useRegisterCommands("operations", paletteCommands);
 
   const showYear = spansMultipleYears(rows.map((r) => r.occurred_at));
 

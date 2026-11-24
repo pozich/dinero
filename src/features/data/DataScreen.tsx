@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getDb } from "../../db/client";
 import { listBackups, restoreBackup, type BackupMeta } from "../../reliability/backups";
 import { openLogsFolder } from "../../reliability/errorLog";
 import { CategoriesScreen } from "../categories/CategoriesScreen";
+import { useRegisterCommands } from "../commandPalette/CommandContext";
 
 type Account = {
   id: number;
@@ -48,6 +49,18 @@ export function DataScreen() {
   const [backups, setBackups] = useState<BackupMeta[]>([]);
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState(false);
+
+  useRegisterCommands(
+    "data",
+    useMemo(
+      () => [
+        { id: "data:categories", label: "Управление категориями", run: () => setShowCategories(true) },
+        { id: "data:logs", label: "Открыть папку логов", run: () => openLogsFolder().catch(() => {}) },
+        { id: "data:vault", label: "Изменить папку данных", run: () => changeVault() },
+      ],
+      [],
+    ),
+  );
 
   const refreshBackups = useCallback(() => {
     listBackups().then(setBackups).catch(() => {});

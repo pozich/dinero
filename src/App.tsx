@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TabBar, TAB_ORDER, type TabId } from "./app/TabBar";
 import { FilesScreen } from "./features/files/FilesScreen";
 import { OperationsScreen } from "./features/operations/OperationsScreen";
@@ -13,6 +13,9 @@ import { UndoProvider, useUndoState } from "./undo/UndoContext";
 import { ReviewScreen } from "./features/review/ReviewScreen";
 import { buildReviewCandidates } from "./review/buildReviewCandidates";
 import { getDb } from "./db/client";
+import { CommandProvider, useRegisterCommands } from "./features/commandPalette/CommandContext";
+import { CommandPalette } from "./features/commandPalette/CommandPalette";
+import { HotkeyOverlay } from "./features/hotkeys/HotkeyOverlay";
 import "./app/theme.css";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -97,8 +100,25 @@ function ReviewButton() {
   );
 }
 
+const TAB_LABELS: Record<TabId, string> = {
+  files: "Файлы",
+  operations: "Категории + Операции",
+  data: "Данные",
+};
+
 function AppShell() {
   const [tab, setTab] = useState<TabId>("files");
+
+  const navCommands = useMemo(
+    () =>
+      TAB_ORDER.filter((t) => t !== tab).map((t) => ({
+        id: `nav:${t}`,
+        label: `Перейти: ${TAB_LABELS[t]}`,
+        run: () => setTab(t),
+      })),
+    [tab],
+  );
+  useRegisterCommands("nav", navCommands);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -137,6 +157,8 @@ function AppShell() {
       {tab === "files" && <FilesScreen />}
       {tab === "operations" && <OperationsScreen />}
       {tab === "data" && <DataScreen />}
+      <CommandPalette />
+      <HotkeyOverlay />
     </div>
   );
 }
@@ -145,7 +167,9 @@ function App() {
   return (
     <ReadOnlyProvider>
       <UndoProvider>
-        <AppShell />
+        <CommandProvider>
+          <AppShell />
+        </CommandProvider>
       </UndoProvider>
     </ReadOnlyProvider>
   );

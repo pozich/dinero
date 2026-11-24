@@ -3,6 +3,7 @@ import { getDb } from "../../db/client";
 import { queryTransactions, type TransactionListItem } from "../../db/transactionsQuery";
 import { formatTransactionDate } from "./dateFormat";
 import { formatTiyin } from "./money";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 /** Manual pairing (SPEC-2.md 3.1/Ф4: right-click → "Связать как перевод/
  * возврат с…") for when the automatic matcher didn't find a candidate.
@@ -19,6 +20,7 @@ export function ManualLinkDialog({
   onPick: (other: TransactionListItem) => void;
   onClose: () => void;
 }) {
+  useBackButtonClose(onClose);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<TransactionListItem[]>([]);
 

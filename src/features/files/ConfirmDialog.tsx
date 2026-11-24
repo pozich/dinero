@@ -1,3 +1,5 @@
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
+
 export function ConfirmDialog({
   title,
   message,
@@ -11,6 +13,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  useBackButtonClose(onCancel);
   return (
     <div className="modal-backdrop">
       <div className="modal">

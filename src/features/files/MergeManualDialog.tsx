@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { TransactionListItem } from "../../db/transactionsQuery";
 import { formatTransactionDate } from "../operations/dateFormat";
 import { formatTiyin } from "../operations/money";
+import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 export type DisplayMergeCandidate = {
   manualId: number;
@@ -21,6 +22,7 @@ export function MergeManualDialog({
   onApply: (chosen: DisplayMergeCandidate[]) => void;
   onClose: () => void;
 }) {
+  useBackButtonClose(onClose);
   const [checked, setChecked] = useState<Set<number>>(
     new Set(candidates.map((c) => c.manualId)),
   );
