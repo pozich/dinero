@@ -48,6 +48,7 @@ import { RecurringPaymentsPanel } from "./RecurringPaymentsPanel";
 import { CategoryTreeTable } from "./CategoryTreeTable";
 import { DrillDownDialog } from "./DrillDownDialog";
 import { ReviewScreen } from "../review/ReviewScreen";
+import { DashboardScreen } from "../dashboard/DashboardScreen";
 
 const GROUP_LABELS: Record<GroupMode, string> = {
   category: "Категории",
@@ -69,6 +70,7 @@ export function AnalyticsScreen() {
   const [unconfirmedCount, setUnconfirmedCount] = useState(0);
   const [recurringState, setRecurringState] = useState<Map<string, RecurringSeriesState>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<"single" | "dashboard">("single");
 
   const [periodKind, setPeriodKind] = useState<PeriodKind>("month");
   const [period, setPeriod] = useState<Period>(() => currentPeriod("month"));
@@ -211,7 +213,17 @@ export function AnalyticsScreen() {
 
   return (
     <div className="screen analytics-screen">
-      <h2>Аналитика</h2>
+      <div className="analytics-header">
+        <h2>Аналитика</h2>
+        <div className="analytics-mode-switch">
+          <button type="button" className={mode === "single" ? "active" : ""} onClick={() => setMode("single")}>
+            Один график
+          </button>
+          <button type="button" className={mode === "dashboard" ? "active" : ""} onClick={() => setMode("dashboard")}>
+            Дашборд
+          </button>
+        </div>
+      </div>
 
       <AccuracyBanner
         warning={accuracy}
@@ -220,6 +232,20 @@ export function AnalyticsScreen() {
         onOpenReview={() => setShowReview(true)}
       />
 
+      {mode === "dashboard" ? (
+        <DashboardScreen
+          allRows={allRows}
+          categories={categories}
+          accounts={accounts}
+          accountOverviews={accountOverviews}
+          recurringSeries={recurringSeries}
+          recurringState={recurringState}
+          onDrillDown={(title, ids) => setDrillDown({ title, transactionIds: ids })}
+          onSetHidden={handleSetHidden}
+          onSetConfirmed={handleSetConfirmed}
+        />
+      ) : (
+        <>
       <div className="filters analytics-period-bar">
         <select value={periodKind} onChange={(e) => setQuickPeriod(e.target.value as PeriodKind)}>
           <option value="month">Месяц</option>
@@ -350,6 +376,8 @@ export function AnalyticsScreen() {
         onSetConfirmed={handleSetConfirmed}
         onDrillDown={(title, ids) => setDrillDown({ title, transactionIds: ids })}
       />
+        </>
+      )}
 
       {drillDown && (
         <DrillDownDialog

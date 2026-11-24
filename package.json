@@ -19,7 +19,8 @@
     "echarts": "^6.1.0",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-grid-layout": "^2.3.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
