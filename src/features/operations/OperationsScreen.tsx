@@ -51,6 +51,8 @@ import {
 } from "../../db/manualTransactions";
 import { setTransactionNote, setTransactionIgnored } from "../../db/transactions";
 import { listPeople, type Person } from "../../db/people";
+import { listGoals, type Goal } from "../../db/goals";
+import { LinkToGoalDialog } from "../goals/LinkToGoalDialog";
 import { MarkDebtDialog } from "../debts/MarkDebtDialog";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -108,6 +110,8 @@ export function OperationsScreen() {
     kind: "transfer" | "refund";
   } | null>(null);
   const [markDebtFor, setMarkDebtFor] = useState<TransactionListItem | null>(null);
+  const [linkGoalFor, setLinkGoalFor] = useState<TransactionListItem | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [manualDialog, setManualDialog] = useState<TransactionListItem | "new" | null>(null);
   const [rulePrefill, setRulePrefill] = useState<{ pattern: string; categoryName: string } | null>(
@@ -153,6 +157,7 @@ export function OperationsScreen() {
       setAccounts(await listAccounts(db));
       setCategories(await listCategories(db));
       setPeople(await listPeople(db));
+      setGoals(await listGoals(db));
     });
     refreshRules();
   }, [refreshRules]);
@@ -908,6 +913,15 @@ export function OperationsScreen() {
           >
             Отметить долг…
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLinkGoalFor(contextMenu.row);
+              setContextMenu(null);
+            }}
+          >
+            Привязать к цели…
+          </button>
           <button type="button" onClick={() => createRuleFromRow(contextMenu.row)}>
             Создать правило
           </button>
@@ -945,6 +959,16 @@ export function OperationsScreen() {
             setMarkDebtFor(null);
             setPeople(await listPeople(await getDb()));
           }}
+        />
+      )}
+
+      {linkGoalFor && (
+        <LinkToGoalDialog
+          transactionId={linkGoalFor.id}
+          description={linkGoalFor.description}
+          goals={goals}
+          onClose={() => setLinkGoalFor(null)}
+          onLinked={() => setLinkGoalFor(null)}
         />
       )}
     </div>
