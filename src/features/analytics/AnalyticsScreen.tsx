@@ -27,7 +27,8 @@ import { groupLedgerRows, groupByCategoryTree, type GroupMode } from "../../anal
 import { computeMetrics } from "../../analytics/metrics";
 import { findRecurringSeries } from "../../analytics/recurringPayments";
 import { buildAccuracyWarning } from "../../analytics/accuracyWarning";
-import { applyAnalyticsFilters, type AnalyticsFilters } from "../../analytics/filters";
+import type { AnalyticsFilters } from "../../analytics/filters";
+import { selectPeriodRows } from "../../analytics/selectPeriodRows";
 import { bucketLedgerRows, chooseBucketGranularity } from "../../analytics/timeSeries";
 import { EChart, type EChartClickInfo } from "./EChart";
 import {
@@ -119,22 +120,12 @@ export function AnalyticsScreen() {
     setPeriod(currentPeriod(kind));
   }
 
-  const periodRows = useMemo(
-    () =>
-      applyAnalyticsFilters(
-        allRows.filter((r) => r.occurredAt >= period.start && r.occurredAt < period.end),
-        filters,
-      ),
-    [allRows, period, filters],
-  );
+  const periodRows = useMemo(() => selectPeriodRows(allRows, period, filters), [allRows, period, filters]);
 
   const comparisonRows = useMemo(() => {
     if (comparisonMode === "none") return null;
     const cmpPeriod = comparisonPeriod(period, periodKind, comparisonMode);
-    return applyAnalyticsFilters(
-      allRows.filter((r) => r.occurredAt >= cmpPeriod.start && r.occurredAt < cmpPeriod.end),
-      filters,
-    );
+    return selectPeriodRows(allRows, cmpPeriod, filters);
   }, [allRows, period, periodKind, comparisonMode, filters]);
 
   const metrics = useMemo(
