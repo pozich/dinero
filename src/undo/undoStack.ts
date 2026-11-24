@@ -65,6 +65,17 @@ export class UndoStack {
     this.push(label, [{ table, whereSql: "id = $1", params: [id], before: [] }]);
   }
 
+  /** Same idea as `pushCreated`, but for one action that created rows in
+   * several tables at once (e.g. a manual transaction plus its category
+   * split) — one undo step undoes all of them together. List `entries`
+   * parent-first (e.g. transactions before splits) — see `swap`. */
+  pushCreatedMany(label: string, entries: { table: string; id: number }[]): void {
+    this.push(
+      label,
+      entries.map((e) => ({ table: e.table, whereSql: "id = $1", params: [e.id], before: [] })),
+    );
+  }
+
   private push(label: string, entries: Entry[]): void {
     this.undoList.push({ label, entries });
     if (this.undoList.length > MAX_DEPTH) this.undoList.shift();
@@ -72,27 +83,41 @@ export class UndoStack {
     this.notify();
   }
 
-  private async restoreRows(spec: EntrySpec, rows: RowSnapshot[]): Promise<void> {
-    await this.db.execute(`DELETE FROM ${spec.table} WHERE ${spec.whereSql}`, spec.params);
+  private async insertRows(table: string, rows: RowSnapshot[]): Promise<void> {
     for (const row of rows) {
       const columns = Object.keys(row);
       const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
       await this.db.execute(
-        `INSERT INTO ${spec.table} (${columns.join(", ")}) VALUES (${placeholders})`,
+        `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`,
         columns.map((c) => row[c]),
       );
     }
   }
 
+  /**
+   * An action with several entries is restored in two full passes rather
+   * than per-entry delete+insert, so a parent/child pair (a transaction and
+   * its split, say) doesn't trip its own foreign key: deletes run child-
+   * to-parent (reverse of the given order), inserts run parent-to-child
+   * (the given order) — which is why callers list entries parent-first.
+   */
   private async swap(from: Action[], to: Action[]): Promise<string | null> {
     const action = from.pop();
     if (!action) return null;
+
     const opposite: Entry[] = [];
     for (const entry of action.entries) {
-      const current = await this.captureRows(entry);
-      opposite.push({ ...entry, before: current });
-      await this.restoreRows(entry, entry.before);
+      opposite.push({ ...entry, before: await this.captureRows(entry) });
     }
+
+    for (let i = action.entries.length - 1; i >= 0; i--) {
+      const entry = action.entries[i];
+      await this.db.execute(`DELETE FROM ${entry.table} WHERE ${entry.whereSql}`, entry.params);
+    }
+    for (const entry of action.entries) {
+      await this.insertRows(entry.table, entry.before);
+    }
+
     to.push({ label: action.label, entries: opposite });
     this.notify();
     return action.label;

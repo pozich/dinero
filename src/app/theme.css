@@ -576,6 +576,83 @@ code {
   min-width: 560px;
 }
 
+.manual-dialog {
+  min-width: 420px;
+}
+
+.manual-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.manual-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.manual-form input,
+.manual-form select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.manual-sign {
+  display: flex;
+  gap: 16px;
+}
+
+.manual-sign label,
+.manual-ignored {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px !important;
+}
+
+.manual-add-button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.manual-add-button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .manual-add-button {
+    position: fixed;
+    right: 20px;
+    bottom: 80px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.manual-icon {
+  color: var(--accent);
+  margin-right: 4px;
+}
+
 .review-list {
   list-style: none;
   padding: 0;

@@ -52,6 +52,48 @@ describe("UndoStack", () => {
     expect(await ruleCount(db)).toBe(1);
   });
 
+  it("pushCreatedMany(): undo deletes rows created in several tables together, as one step", async () => {
+    const db = createTestDb();
+    const stack = new UndoStack(db);
+
+    const categoryResult = await db.execute("INSERT INTO categories (name) VALUES ($1)", ["Такси"]);
+    const categoryId = categoryResult.lastInsertId!;
+    const txResult = await db.execute(
+      "INSERT INTO transactions (account_id, occurred_at, amount_tiyin, description, dedup_key, is_manual) VALUES ((SELECT id FROM accounts LIMIT 1), $1, $2, $3, $4, 1)",
+      ["2026-01-01T00:00:00.000Z", -1000, "Такси", "manual:test"],
+    );
+    const txId = txResult.lastInsertId!;
+    const splitResult = await db.execute(
+      "INSERT INTO splits (transaction_id, category_id, amount_tiyin) VALUES ($1, $2, $3)",
+      [txId, categoryId, -1000],
+    );
+    const splitId = splitResult.lastInsertId!;
+
+    stack.pushCreatedMany("new manual transaction", [
+      { table: "transactions", id: txId },
+      { table: "splits", id: splitId },
+    ]);
+
+    expect(await stack.undo()).toBe("new manual transaction");
+    const [{ n: txCount }] = await db.select<{ n: number }[]>(
+      "SELECT COUNT(*) AS n FROM transactions WHERE id = $1",
+      [txId],
+    );
+    const [{ n: splitCount }] = await db.select<{ n: number }[]>(
+      "SELECT COUNT(*) AS n FROM splits WHERE id = $1",
+      [splitId],
+    );
+    expect(txCount).toBe(0);
+    expect(splitCount).toBe(0);
+
+    await stack.redo();
+    const [{ n: txAfterRedo }] = await db.select<{ n: number }[]>(
+      "SELECT COUNT(*) AS n FROM transactions WHERE id = $1",
+      [txId],
+    );
+    expect(txAfterRedo).toBe(1);
+  });
+
   it("pushCreated(): undo deletes the freshly-created row, redo restores it", async () => {
     const db = createTestDb();
     const stack = new UndoStack(db);
