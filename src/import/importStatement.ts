@@ -79,6 +79,23 @@ async function insertAll(
   return { ids, insertedIds, inserted, skipped };
 }
 
+// SPEC-2.md раздел 1: dividends are investment income, not an investment
+// outflow — the ledger module needs them flagged, persisted at import time
+// rather than matched against raw_type text on every query.
+const DIVIDEND_RE = /Зачисление дивидендов/;
+
+async function markDividendIncome(
+  db: DbClient,
+  transactions: ParsedTransaction[],
+  ids: number[],
+): Promise<void> {
+  for (let i = 0; i < transactions.length; i++) {
+    if (DIVIDEND_RE.test(transactions[i].description)) {
+      await db.execute("UPDATE transactions SET is_investment_income = 1 WHERE id = $1", [ids[i]]);
+    }
+  }
+}
+
 async function linkCashMirrors(
   db: DbClient,
   statementId: number | null,
@@ -131,6 +148,7 @@ export async function importStatement(
       periodEnd: statement.periodEnd,
       fileHash,
       fileName,
+      closingBalanceTiyin: statement.summary.closing,
     });
 
     const main = await insertAll(db, "kaspi_gold", statementId, statement.transactions);
@@ -173,9 +191,11 @@ export async function importStatement(
       periodEnd: statement.periodEnd,
       fileHash,
       fileName,
+      closingBalanceTiyin: statement.summary.closing,
     });
 
     const main = await insertAll(db, statement.accountKind, statementId, statement.transactions);
+    await markDividendIncome(db, statement.transactions, main.ids);
 
     // all fees are inserted together so dedup ordinals are computed across
     // the whole set, not reset to 1 for every single fee
@@ -213,6 +233,7 @@ export async function importStatement(
       periodEnd: statement.periodEnd,
       fileHash,
       fileName,
+      closingBalanceTiyin: statement.summary.closing,
     });
     const main = await insertAll(db, "eurasian", statementId, statement.transactions);
     return {
@@ -236,6 +257,7 @@ export async function importStatement(
     periodEnd: statement.periodEnd,
     fileHash,
     fileName,
+    closingBalanceTiyin: statement.summary.closing,
   });
   const main = await insertAll(db, "bcc", statementId, statement.transactions);
   return {

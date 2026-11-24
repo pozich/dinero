@@ -79,6 +79,25 @@ describe.skipIf(!hasSamples)("importStatement (real sample files, in-memory sqli
     expect(fees).toHaveLength(36);
   });
 
+  it("flags dividend rows as investment income, and stores the closing balance (SPEC-2.md 1/6.1)", async () => {
+    const db = createTestDb();
+    const data = readSample("Halyk/halyk_invest_oct.pdf");
+
+    await importStatement(db, data, "halyk_invest_oct.pdf");
+
+    const dividends = await db.select<{ amount_tiyin: number }[]>(
+      "SELECT amount_tiyin FROM transactions WHERE is_investment_income = 1",
+    );
+    expect(dividends.length).toBeGreaterThan(0);
+    expect(dividends.every((d) => d.amount_tiyin > 0)).toBe(true);
+
+    const [statement] = await db.select<{ closing_balance_tiyin: number | null }[]>(
+      "SELECT closing_balance_tiyin FROM statements WHERE file_name = $1",
+      ["halyk_invest_oct.pdf"],
+    );
+    expect(statement.closing_balance_tiyin).not.toBeNull();
+  });
+
   it("imports Eurasian and BCC as plain transaction lists", async () => {
     const db = createTestDb();
     await importStatement(db, readSample("bcc & ebank/eubank_oct.pdf"), "eubank_oct.pdf");

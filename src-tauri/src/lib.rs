@@ -143,6 +143,12 @@ pub fn run() {
             sql: include_str!("../migrations/0004_manual_categories_rules.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "ledger",
+            sql: include_str!("../migrations/0005_ledger.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let heartbeat_vault_path = vault_path.clone();

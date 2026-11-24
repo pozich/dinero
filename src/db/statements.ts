@@ -9,6 +9,7 @@ export type StatementRow = {
   file_hash: string;
   file_name: string;
   imported_at: string;
+  closing_balance_tiyin: number | null;
 };
 
 export type StatementSummary = StatementRow & {
@@ -36,11 +37,12 @@ export async function insertStatement(
     periodEnd: string;
     fileHash: string;
     fileName: string;
+    closingBalanceTiyin?: number | null;
   },
 ): Promise<number> {
   const result = await db.execute(
-    `INSERT INTO statements (account_id, bank, period_start, period_end, file_hash, file_name)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT INTO statements (account_id, bank, period_start, period_end, file_hash, file_name, closing_balance_tiyin)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [
       input.accountId,
       input.bank,
@@ -48,6 +50,7 @@ export async function insertStatement(
       input.periodEnd,
       input.fileHash,
       input.fileName,
+      input.closingBalanceTiyin ?? null,
     ],
   );
   return result.lastInsertId!;
