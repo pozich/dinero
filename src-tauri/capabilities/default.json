@@ -9,6 +9,10 @@
     "sql:default",
     "sql:allow-execute",
     "dialog:default",
-    "opener:default"
+    "opener:default",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://kase.kz/*" }]
+    }
   ]
 }

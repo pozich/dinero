@@ -34,6 +34,11 @@ chrono = { version = "0.4", features = ["clock"] }
 # Official "reveal in file manager" plugin, for the logs-folder button
 # (SPEC-2.md 2.4) — avoids hand-rolling xdg-open/explorer/open per OS.
 tauri-plugin-opener = "2"
+# Ф8 (SPEC-2.md 9.2): the app's first network access, to download KASE
+# share prices. Goes through this plugin (not the webview's own fetch) so
+# the domain allowlist in capabilities/default.json is actually enforced —
+# a plain webview fetch would just hit CORS instead.
+tauri-plugin-http = "2"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
