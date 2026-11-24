@@ -25,7 +25,7 @@ import { findMatchingCategory } from "./categoryRuleMatch";
 import { CategoryInput } from "./CategoryInput";
 import { SplitDialog } from "./SplitDialog";
 import { ApplyToSimilarDialog } from "./ApplyToSimilarDialog";
-import { RulesDialog } from "./RulesDialog";
+import { RulesDialog, type NewRuleInput } from "./RulesDialog";
 import { ApplyRulesDialog, type RuleMatch } from "./ApplyRulesDialog";
 import { ManualLinkDialog } from "./ManualLinkDialog";
 import { ManualTransactionDialog, type ManualFormResult } from "./ManualTransactionDialog";
@@ -62,8 +62,13 @@ const COLUMNS: { key: SortColumn; label: string }[] = [
 type SimilarPrompt = {
   categoryId: number;
   categoryName: string;
+  description: string;
   candidates: TransactionListItem[];
 };
+
+function escapeForRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export function OperationsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -90,6 +95,9 @@ export function OperationsScreen() {
   } | null>(null);
   const [manualLinkFor, setManualLinkFor] = useState<TransactionListItem | null>(null);
   const [manualDialog, setManualDialog] = useState<TransactionListItem | "new" | null>(null);
+  const [rulePrefill, setRulePrefill] = useState<{ pattern: string; categoryName: string } | null>(
+    null,
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const undoStack = useUndoStack();
   const readOnly = useReadOnly();
@@ -196,9 +204,19 @@ export function OperationsScreen() {
     ).filter((c) => c.id !== row.id);
 
     if (candidates.length > 0) {
-      setSimilarPrompt({ categoryId, categoryName: name, candidates });
+      setSimilarPrompt({ categoryId, categoryName: name, description: row.description, candidates });
     }
     refresh();
+  }
+
+  function createRuleFromSimilar() {
+    if (!similarPrompt) return;
+    setRulePrefill({
+      pattern: escapeForRegex(similarPrompt.description),
+      categoryName: similarPrompt.categoryName,
+    });
+    setSimilarPrompt(null);
+    setShowRules(true);
   }
 
   async function applySimilar(ids: number[]) {
@@ -244,7 +262,7 @@ export function OperationsScreen() {
   // restores the table to exactly what it was.
   const RULES_TABLE_SPEC = [{ table: "category_rules", whereSql: "1=1", params: [] }];
 
-  async function createRule(input: { pattern: string; caseSensitive: boolean; categoryName: string }) {
+  async function createRule(input: NewRuleInput) {
     if (readOnly) return;
     const db = await getDb();
     const categoryId = await findOrCreateCategory(db, input.categoryName);
@@ -253,9 +271,14 @@ export function OperationsScreen() {
         pattern: input.pattern,
         caseSensitive: input.caseSensitive,
         categoryId,
+        accountKinds: input.accountKinds,
+        sign: input.sign,
+        minAmountTiyin: input.minAmountTiyin,
+        maxAmountTiyin: input.maxAmountTiyin,
       }).then(() => undefined),
     );
     setCategories(await listCategories(db));
+    setRulePrefill(null);
     refreshRules();
   }
 
@@ -290,7 +313,14 @@ export function OperationsScreen() {
     const categoryById = new Map(categories.map((c) => [c.id, c.name]));
     const matches: RuleMatch[] = [];
     for (const transaction of uncategorized) {
-      const categoryId = findMatchingCategory(transaction.description, rules);
+      const categoryId = findMatchingCategory(
+        {
+          description: transaction.description,
+          accountKind: transaction.account_kind,
+          amountTiyin: transaction.amount_tiyin,
+        },
+        rules,
+      );
       if (categoryId !== null) {
         matches.push({
           transaction,
@@ -614,6 +644,7 @@ export function OperationsScreen() {
           candidates={similarPrompt.candidates}
           onApply={applySimilar}
           onClose={() => setSimilarPrompt(null)}
+          onCreateRule={createRuleFromSimilar}
         />
       )}
 
@@ -621,11 +652,17 @@ export function OperationsScreen() {
         <RulesDialog
           rules={rules}
           categories={categories}
+          accounts={accounts}
+          initialPattern={rulePrefill?.pattern}
+          initialCategoryName={rulePrefill?.categoryName}
           onCreate={createRule}
           onUpdate={updateRule}
           onDelete={deleteRule}
           onMove={moveRule}
-          onClose={() => setShowRules(false)}
+          onClose={() => {
+            setShowRules(false);
+            setRulePrefill(null);
+          }}
         />
       )}
 

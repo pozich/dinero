@@ -8,11 +8,13 @@ export function ApplyToSimilarDialog({
   candidates,
   onApply,
   onClose,
+  onCreateRule,
 }: {
   categoryName: string;
   candidates: TransactionListItem[];
   onApply: (ids: number[]) => void;
   onClose: () => void;
+  onCreateRule?: () => void;
 }) {
   const [checked, setChecked] = useState<Set<number>>(new Set(candidates.map((c) => c.id)));
   const showYear = spansMultipleYears(candidates.map((c) => c.occurred_at));
@@ -52,6 +54,11 @@ export function ApplyToSimilarDialog({
           <button type="button" onClick={onClose}>
             Пропустить
           </button>
+          {onCreateRule && (
+            <button type="button" onClick={onCreateRule}>
+              Создать правило из этого
+            </button>
+          )}
           <button
             type="button"
             disabled={checked.size === 0}

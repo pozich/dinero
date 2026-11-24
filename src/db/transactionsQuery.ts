@@ -4,6 +4,7 @@ export type TransactionListItem = {
   id: number;
   account_id: number;
   account_name: string;
+  account_kind: string;
   occurred_at: string;
   amount_tiyin: number;
   description: string;
@@ -97,7 +98,8 @@ export function buildTransactionsQuery(
 
   const sql = `
     SELECT
-      t.id, t.account_id, a.name AS account_name, t.occurred_at, t.amount_tiyin, t.description,
+      t.id, t.account_id, a.name AS account_name, a.kind AS account_kind,
+      t.occurred_at, t.amount_tiyin, t.description,
       t.is_manual, t.is_ignored, t.note,
       MIN(s.category_id) AS category_id,
       MIN(c.name) AS category_name,

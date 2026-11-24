@@ -572,6 +572,38 @@ code {
   margin-top: 6px;
 }
 
+.rule-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.rule-accounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rule-accounts label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.rule-conditions select,
+.rule-conditions input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
 .review-screen {
   min-width: 560px;
 }
