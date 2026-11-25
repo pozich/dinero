@@ -4,7 +4,6 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getDb } from "../../db/client";
 import { listBackups, restoreBackup, type BackupMeta } from "../../reliability/backups";
 import { openLogsFolder } from "../../reliability/errorLog";
-import { CategoriesScreen } from "../categories/CategoriesScreen";
 import { useRegisterCommands } from "../commandPalette/CommandContext";
 import { ReviewScreen } from "../review/ReviewScreen";
 import { buildReviewCandidates } from "../../review/buildReviewCandidates";
@@ -20,13 +19,6 @@ type Account = {
   name: string;
   kind: string;
   is_transit: number;
-};
-
-type Category = {
-  id: number;
-  name: string;
-  parent_id: number | null;
-  is_system: number;
 };
 
 function vaultFolderFromDbUrl(dbUrl: string): string {
@@ -50,13 +42,11 @@ function formatSize(bytes: number): string {
 
 export function DataScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [vaultMessage, setVaultMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [backups, setBackups] = useState<BackupMeta[]>([]);
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
-  const [showCategories, setShowCategories] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showDebts, setShowDebts] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
@@ -84,7 +74,6 @@ export function DataScreen() {
     "data",
     useMemo(
       () => [
-        { id: "data:categories", label: "Управление категориями", run: () => setShowCategories(true) },
         { id: "data:logs", label: "Открыть папку логов", run: () => openLogsFolder().catch(() => {}) },
         { id: "data:vault", label: "Изменить папку данных", run: () => changeVault() },
         { id: "data:review", label: "Проверить переводы/возвраты", run: () => setShowReview(true) },
@@ -99,21 +88,15 @@ export function DataScreen() {
     listBackups().then(setBackups).catch(() => {});
   }, []);
 
-  const refreshCategories = useCallback(async () => {
-    const db = await getDb();
-    setCategories(await db.select<Category[]>("SELECT * FROM categories ORDER BY id"));
-  }, []);
-
   useEffect(() => {
     getDb()
       .then(async (db) => {
         setAccounts(await db.select<Account[]>("SELECT * FROM accounts ORDER BY id"));
       })
       .catch((e) => setError(String(e)));
-    refreshCategories();
     invoke<string>("get_db_url").then((url) => setVaultPath(vaultFolderFromDbUrl(url)));
     refreshBackups();
-  }, [refreshBackups, refreshCategories]);
+  }, [refreshBackups]);
 
   async function handleRestore(backup: BackupMeta) {
     const ok = window.confirm(
@@ -233,35 +216,6 @@ export function DataScreen() {
           ))}
         </tbody>
       </table>
-      <h3>Категории</h3>
-      <button type="button" onClick={() => setShowCategories(true)}>
-        Управление категориями...
-      </button>
-      <table>
-        <thead>
-          <tr>
-            <th>Категория</th>
-            <th>системная</th>
-          </tr>
-        </thead>
-        <tbody>
-          {categories.map((c) => (
-            <tr key={c.id}>
-              <td>{c.name}</td>
-              <td>{c.is_system ? "да" : "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {showCategories && (
-        <CategoriesScreen
-          onClose={() => {
-            setShowCategories(false);
-            refreshCategories();
-          }}
-        />
-      )}
 
       {showReview && <ReviewScreen onClose={() => setShowReview(false)} onCountChange={setReviewCount} />}
       {showDebts && <DebtsScreen onClose={() => setShowDebts(false)} onCountChange={setDebtsCount} />}

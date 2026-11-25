@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { TabBar, TAB_ORDER, type TabId } from "./app/TabBar";
 import { FilesHubScreen } from "./features/files/FilesHubScreen";
-import { OperationsScreen } from "./features/operations/OperationsScreen";
+import { OperationsHubScreen } from "./features/operations/OperationsHubScreen";
 import { AnalyticsHubScreen } from "./features/analytics/AnalyticsHubScreen";
 import { ReadOnlyProvider } from "./reliability/ReadOnlyContext";
 import { LockConflictDialog } from "./reliability/LockConflictDialog";
@@ -130,7 +130,7 @@ function AppShell() {
         <UndoControls />
       </div>
       {tab === "files" && <FilesHubScreen />}
-      {tab === "operations" && <OperationsScreen />}
+      {tab === "operations" && <OperationsHubScreen />}
       {tab === "analytics" && <AnalyticsHubScreen />}
       <CommandPalette />
       <HotkeyOverlay />

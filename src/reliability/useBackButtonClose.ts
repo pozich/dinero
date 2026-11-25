@@ -14,13 +14,19 @@ import { useEffect } from "react";
  * app's dialogs are opened one at a time, so this hasn't come up, but it's
  * worth knowing if that ever changes. Not verified on a real Android
  * device — see HANDOFF.md.
+ *
+ * onClose is optional so a component can reuse the same hook/markup both
+ * as a dismissible dialog and, with no onClose, as a permanently-mounted
+ * inline screen (no history entry, no back-button behavior to wire up).
  */
-export function useBackButtonClose(onClose: () => void): void {
+export function useBackButtonClose(onClose?: () => void): void {
   useEffect(() => {
+    if (!onClose) return;
+    const close = onClose;
     history.pushState({ dineroModal: true }, "");
 
     function onPopState() {
-      onClose();
+      close();
     }
     window.addEventListener("popstate", onPopState);
 

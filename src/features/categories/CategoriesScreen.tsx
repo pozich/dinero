@@ -19,7 +19,11 @@ import { useBackButtonClose } from "../../reliability/useBackButtonClose";
 
 type Action = { category: Category; kind: "merge" | "delete" };
 
-export function CategoriesScreen({ onClose }: { onClose: () => void }) {
+/** With onClose, renders as a dismissible modal (the old behavior). Without
+ * it, renders as a plain inline block — used to make Categories a
+ * permanent section of the Operations hub rather than a dialog you have
+ * to open. */
+export function CategoriesScreen({ onClose }: { onClose?: () => void }) {
   useBackButtonClose(onClose);
   const [categories, setCategories] = useState<Category[]>([]);
   const [counts, setCounts] = useState<Map<number, CategoryCount>>(new Map());
@@ -154,55 +158,64 @@ export function CategoriesScreen({ onClose }: { onClose: () => void }) {
 
   const allFlat = flattenCategoryTree(tree);
 
+  const content = (
+    <>
+      <h3>Категории</h3>
+      <p className="hint">
+        Двойной клик — переименовать. Перетащите категорию на другую, чтобы сделать её
+        дочерней; перетащите в «В корень», чтобы убрать родителя.
+      </p>
+
+      <div
+        className="category-root-drop"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={() => handleDrop(null)}
+      >
+        ⌂ В корень
+      </div>
+
+      <div className="category-tree">{tree.map((node) => renderNode(node, 0))}</div>
+
+      {action && (
+        <div className="category-action-form">
+          <p className="hint">
+            {action.kind === "merge"
+              ? `Слить «${action.category.name}» с…`
+              : `Удалить «${action.category.name}» — операции переназначить на…`}
+          </p>
+          <select
+            value={actionTarget}
+            onChange={(e) => setActionTarget(e.target.value === "none" ? "none" : Number(e.target.value))}
+          >
+            <option value="">Выберите...</option>
+            {action.kind === "delete" && <option value="none">без категории</option>}
+            {allFlat
+              .filter((c) => c.id !== action.category.id)
+              .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={() => setAction(null)}>
+            Отмена
+          </button>
+          <button type="button" disabled={actionTarget === ""} onClick={confirmAction}>
+            {action.kind === "merge" ? "Слить" : "Удалить"}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  if (!onClose) {
+    return <div className="categories-screen categories-inline">{content}</div>;
+  }
+
   return (
     <div className="modal-backdrop">
       <div className="modal categories-screen">
-        <h3>Категории</h3>
-        <p className="hint">
-          Двойной клик — переименовать. Перетащите категорию на другую, чтобы сделать её
-          дочерней; перетащите в «В корень», чтобы убрать родителя.
-        </p>
-
-        <div
-          className="category-root-drop"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={() => handleDrop(null)}
-        >
-          ⌂ В корень
-        </div>
-
-        <div className="category-tree">{tree.map((node) => renderNode(node, 0))}</div>
-
-        {action && (
-          <div className="category-action-form">
-            <p className="hint">
-              {action.kind === "merge"
-                ? `Слить «${action.category.name}» с…`
-                : `Удалить «${action.category.name}» — операции переназначить на…`}
-            </p>
-            <select
-              value={actionTarget}
-              onChange={(e) => setActionTarget(e.target.value === "none" ? "none" : Number(e.target.value))}
-            >
-              <option value="">Выберите...</option>
-              {action.kind === "delete" && <option value="none">без категории</option>}
-              {allFlat
-                .filter((c) => c.id !== action.category.id)
-                .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={() => setAction(null)}>
-              Отмена
-            </button>
-            <button type="button" disabled={actionTarget === ""} onClick={confirmAction}>
-              {action.kind === "merge" ? "Слить" : "Удалить"}
-            </button>
-          </div>
-        )}
-
+        {content}
         <div className="modal-actions">
           <button type="button" onClick={onClose}>
             Закрыть
