@@ -54,13 +54,7 @@ import { listPeople, type Person } from "../../db/people";
 import { listGoals, type Goal } from "../../db/goals";
 import { LinkToGoalDialog } from "../goals/LinkToGoalDialog";
 import { MarkDebtDialog } from "../debts/MarkDebtDialog";
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
-  );
-}
+import { isTypingTarget } from "../../app/isTypingTarget";
 
 type SimilarPrompt = {
   categoryId: number;

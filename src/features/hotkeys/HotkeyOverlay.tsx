@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-}
+import { isTypingTarget } from "../../app/isTypingTarget";
 
 const GROUPS: { title: string; keys: [string, string][] }[] = [
   {

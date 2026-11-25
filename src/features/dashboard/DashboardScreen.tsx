@@ -38,6 +38,7 @@ import { WidgetFrame } from "./WidgetFrame";
 import { PresetChips } from "./PresetChips";
 import { PresetNameDialog } from "./PresetNameDialog";
 import { AddWidgetMenu } from "./AddWidgetMenu";
+import { isTypingTarget } from "../../app/isTypingTarget";
 
 const GridLayout = WidthProvider(ReactGridLayout);
 
@@ -117,7 +118,7 @@ export function DashboardScreen({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLElement && (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")) return;
+      if (isTypingTarget(e.target)) return;
       const n = Number(e.key);
       if (n >= 1 && n <= 9 && presets[n - 1]) setActiveId(presets[n - 1].id);
     }

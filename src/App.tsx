@@ -13,16 +13,8 @@ import { UndoProvider, useUndoState } from "./undo/UndoContext";
 import { CommandProvider, useRegisterCommands } from "./features/commandPalette/CommandContext";
 import { CommandPalette } from "./features/commandPalette/CommandPalette";
 import { HotkeyOverlay } from "./features/hotkeys/HotkeyOverlay";
+import { isTypingTarget } from "./app/isTypingTarget";
 import "./app/theme.css";
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.tagName === "INPUT" ||
-    target.tagName === "TEXTAREA" ||
-    target.isContentEditable
-  );
-}
 
 function UndoControls() {
   const { stack, canUndo, canRedo } = useUndoState();
