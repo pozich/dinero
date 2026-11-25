@@ -704,7 +704,7 @@ input[type="radio"]:checked::after {
 .statement-card-add {
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--border);
+  border: 2px dotted var(--border);
   background: transparent;
   color: var(--text-dim);
   gap: 10px;

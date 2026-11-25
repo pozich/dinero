@@ -680,7 +680,7 @@ export function OperationsScreen() {
 
   return (
     <div className="screen operations-screen" ref={containerRef}>
-      <h2>Категории + Операции</h2>
+      <h2>Операции</h2>
 
       <div className="operations-layout">
         <CategorySidebar
@@ -798,13 +798,7 @@ export function OperationsScreen() {
         />
       )}
 
-      <p className="hint">
-        {rows.length} операций.{" "}
-        <span className="keyboard-hint">
-          ↑/↓ — выбрать строку, Enter/двойной клик — категория, Ctrl+S — разрез, N — новая
-          операция, Ctrl+A — выбрать все, Shift/Ctrl+клик — выделение, рамка мышью.
-        </span>
-      </p>
+      <p className="hint">{rows.length} операций. Горячие клавиши — «?».</p>
         </div>
       </div>
 
